@@ -67,9 +67,13 @@ npm run dev
 
 | 文檔 | 用途 |
 |------|------|
+| **[PRODUCTION_DEPLOYMENT_COMPLETE_GUIDE.md](./PRODUCTION_DEPLOYMENT_COMPLETE_GUIDE.md)** | 🌟 完整部署實戰指南（含所有坑與解決方案）|
 | **[MULTI_WORKER_DEVELOPMENT_GUIDE.md](./MULTI_WORKER_DEVELOPMENT_GUIDE.md)** | 多 Worker 開發完整歷程 |
 | **[D1_AND_MIGRATIONS_GUIDE.md](./D1_AND_MIGRATIONS_GUIDE.md)** | D1 資料庫與 Migration |
-| **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** | 部署指南 |
+| **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** | 部署指南（基礎）|
+| **[GOOGLE_LOGIN_SETUP.md](./GOOGLE_LOGIN_SETUP.md)** | Google OAuth 登入設定 |
+| **[USER_ROLES_SYSTEM.md](./USER_ROLES_SYSTEM.md)** | 用戶角色權限系統 |
+| **[ENV_VARS_BEST_PRACTICES.md](./ENV_VARS_BEST_PRACTICES.md)** | 環境變數最佳實踐 |
 
 ---
 
@@ -148,19 +152,22 @@ open http://localhost:5173         # Frontend
 
 ---
 
-## 🎯 下一步
+## 🎯 生產環境
 
-**立即可做**：
-1. ✅ 本地開發和測試（已就緒）
-2. ✅ 功能開發（核心已完成）
+**已部署**：
+- ✅ Core Worker: https://oao.to
+- ✅ API Worker: https://api.oao.to
+- ✅ Frontend: https://28ad8abb.oao-to-app.pages.dev
+- ⏳ Custom Domain（Frontend）: app.oao.to（需手動設定）
 
-**準備部署**：
-1. 創建生產環境資源（KV、D1）
-2. 設定 Secrets
-3. 執行 Migrations
-4. 部署到 Cloudflare
+**功能狀態**：
+- ✅ 短網址創建與重定向
+- ✅ Google OAuth 登入
+- ✅ 用戶角色系統
+- ✅ 分析功能（生產環境數據累積中）
+- ✅ 管理儀表板
 
-**參考**：[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+**詳細部署文檔**：[PRODUCTION_DEPLOYMENT_COMPLETE_GUIDE.md](./PRODUCTION_DEPLOYMENT_COMPLETE_GUIDE.md)
 
 ---
 
