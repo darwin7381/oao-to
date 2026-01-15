@@ -14,7 +14,12 @@ const app = new Hono<{ Bindings: Env }>();
 
 // CORS（允許前端調用）
 app.use('*', cors({
-  origin: ['https://oao.to', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: [
+    'https://app.oao.to',
+    'https://28ad8abb.oao-to-app.pages.dev',  // Pages 預設網址
+    'http://localhost:5173',  // 本地開發
+    'http://localhost:3000'
+  ],
   credentials: true,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
