@@ -25,3 +25,15 @@ id = "8f133853496a4bdfb8151a39dd251518"
 binding = "TRACKER"
 dataset = "link_clicks"
 
+# ===== 生產環境 =====
+[env.production]
+routes = [{ pattern = "oao.to", custom_domain = true }]
+
+[[env.production.kv_namespaces]]
+binding = "LINKS"
+id = "cb616d868c134b1c9e5e6ef54afb3f64"
+
+[[env.production.analytics_engine_datasets]]
+binding = "TRACKER"
+dataset = "link_clicks"
+

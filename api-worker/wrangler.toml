@@ -39,3 +39,21 @@ database_id = "db9693c9-d2de-43b7-ad28-e2211e736e16"
 binding = "TRACKER"
 dataset = "link_clicks"
 
+# ===== 生產環境 =====
+[env.production]
+routes = [{ pattern = "api.oao.to", custom_domain = true }]
+
+[[env.production.kv_namespaces]]
+binding = "LINKS"
+id = "cb616d868c134b1c9e5e6ef54afb3f64"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "oao-to-prod"
+database_id = "bc49236e-acc9-499b-ba68-6aa90a000444"
+migrations_dir = "migrations"
+
+[[env.production.analytics_engine_datasets]]
+binding = "TRACKER"
+dataset = "link_clicks"
+
