@@ -12,6 +12,7 @@ export default function NewHome() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // 檢查 OAuth 錯誤
   useEffect(() => {
@@ -80,7 +81,8 @@ export default function NewHome() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('✅ 已複製到剪貼簿！');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -250,9 +252,13 @@ export default function NewHome() {
                   </a>
                   <button
                     onClick={() => copyToClipboard(result.shortUrl)}
-                    className="btn btn-primary ml-4 whitespace-nowrap"
+                    className={`btn ml-4 whitespace-nowrap transition-all ${
+                      copied 
+                        ? 'bg-green-500 hover:bg-green-600 text-white' 
+                        : 'btn-primary'
+                    }`}
                   >
-                    📋 複製
+                    {copied ? '✓ 已複製' : '📋 複製'}
                   </button>
                 </div>
               </div>
