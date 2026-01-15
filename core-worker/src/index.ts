@@ -21,6 +21,11 @@ interface LinkData {
 
 const app = new Hono<{ Bindings: Env }>();
 
+// 根路徑：重定向到主網站
+app.get('/', (c) => {
+  return c.redirect('https://app.oao.to', 302);
+});
+
 // 健康檢查
 app.get('/health', (c) => c.json({ 
   status: 'ok', 
