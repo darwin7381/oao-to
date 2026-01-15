@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useRole } from '../hooks/useRole';
 import Avatar from './Avatar';
+import { motion, AnimatePresence } from 'framer-motion';
+import { LayoutDashboard, LogOut, Users, BarChart3, ChevronDown, User } from 'lucide-react';
+import { cn } from '../lib/utils';
+import { Button } from './ui/Button';
 
 export default function UserMenu() {
   const { user, loading, login, logout } = useAuth();
@@ -10,7 +14,6 @@ export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // 點擊外部關閉選單
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -24,153 +27,111 @@ export default function UserMenu() {
     }
   }, [isOpen]);
 
-  // 載入中顯示佔位符
   if (loading) {
     return (
-      <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
+      <div className="w-10 h-10 rounded-full bg-gray-100 animate-pulse border border-gray-200"></div>
     );
   }
 
-  // 未登入顯示登入按鈕
   if (!user) {
     return (
-      <button onClick={login} className="btn btn-primary">
-        <span className="mr-2">🔐</span>
-        使用 Google 登入
-      </button>
+      <Button onClick={login} variant="default" size="sm" className="rounded-full px-6">
+        Login
+      </Button>
     );
   }
 
   return (
     <div className="relative" ref={menuRef}>
-      {/* 用戶頭像按鈕 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className={cn(
+          "flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border transition-all duration-200",
+          isOpen ? "bg-gray-50 border-gray-300 ring-2 ring-blue-500/10" : "bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+        )}
       >
-        <Avatar 
-          src={user.avatar} 
-          alt={user.name} 
-          size="sm" 
-          className="border-2 border-gray-200"
+        <Avatar
+          src={user.avatar}
+          alt={user.name}
+          size="sm"
+          className="border border-gray-200 w-8 h-8"
         />
-        <div className="text-left hidden md:block">
-          <div className="text-sm font-semibold text-gray-800">{user.name}</div>
-          <div className="text-xs text-gray-500">{user.email}</div>
-        </div>
-        <svg
-          className={`w-4 h-4 text-gray-600 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <span className="hidden md:block text-sm font-medium text-gray-700 max-w-[100px] truncate">
+          {user.name}
+        </span>
+        <ChevronDown className={cn("w-4 h-4 text-gray-400 transition-transform duration-200", isOpen && "rotate-180")} />
       </button>
 
-      {/* 下拉選單 */}
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-          {/* 用戶資訊 */}
-          <div className="px-4 py-3 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <Avatar 
-                src={user.avatar} 
-                alt={user.name} 
-                size="lg"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-gray-900 truncate">{user.name}</div>
-                <div className="text-sm text-gray-500 truncate">{user.email}</div>
-                {user.role && (
-                  <div className="mt-1">
-                    <RoleBadge role={user.role} />
-                  </div>
-                )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.2 }}
+            className="absolute right-0 mt-2 w-72 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-gray-200/50 border border-white/50 ring-1 ring-black/5 z-50 p-2"
+          >
+            <div className="px-4 py-3 bg-gray-50/50 rounded-xl mb-1 border border-gray-100/50">
+              <div className="flex items-center gap-3">
+                <Avatar src={user.avatar} alt={user.name} size="md" />
+                <div className="overflow-hidden">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* 選單項目 */}
-          <div className="py-1">
-            <Link
-              to="/dashboard"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <span className="text-lg">📊</span>
-              <span>我的短網址</span>
-            </Link>
+            <div className="space-y-0.5">
+              <Link
+                to="/dashboard"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                <span>Dashboard</span>
+              </Link>
 
-            {/* 管理員選項 - 只有 admin 和 superadmin 能看到 */}
-            {isAdmin && user && (user.role === 'admin' || user.role === 'superadmin') && (
-              <>
-                <div className="border-t border-gray-100 my-1"></div>
-                <div className="px-4 py-1">
-                  <div className="text-xs font-semibold text-gray-400 uppercase">管理功能</div>
-                </div>
-                <Link
-                  to="/admin/users"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <span className="text-lg">👥</span>
-                  <span>用戶管理</span>
-                </Link>
-                <Link
-                  to="/admin/stats"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <span className="text-lg">📈</span>
-                  <span>系統統計</span>
-                </Link>
-              </>
-            )}
+              {/* Admin Links */}
+              {isAdmin && (
+                <>
+                  <div className="my-1 px-3 py-1">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Admin</p>
+                  </div>
+                  <Link
+                    to="/admin/users"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>User Management</span>
+                  </Link>
+                  <Link
+                    to="/admin/stats"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    <span>System Stats</span>
+                  </Link>
+                </>
+              )}
+            </div>
 
-            <div className="border-t border-gray-100 my-1"></div>
-            
-            {/* 登出 */}
+            <div className="my-1 border-t border-gray-100" />
+
             <button
               onClick={() => {
                 setIsOpen(false);
                 logout();
               }}
-              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-600 rounded-lg hover:bg-red-50 transition-colors"
             >
-              <span className="text-lg">🚪</span>
-              <span>登出</span>
+              <LogOut className="w-4 h-4" />
+              <span>Sign out</span>
             </button>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-
-// 角色徽章組件
-function RoleBadge({ role }: { role: string }) {
-  const config = {
-    user: {
-      label: '用戶',
-      className: 'bg-gray-100 text-gray-700 border-gray-200',
-    },
-    admin: {
-      label: '管理員',
-      className: 'bg-blue-100 text-blue-700 border-blue-200',
-    },
-    superadmin: {
-      label: '超級管理員',
-      className: 'bg-purple-100 text-purple-700 border-purple-200',
-    },
-  };
-
-  const { label, className } = config[role as keyof typeof config] || config.user;
-
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${className}`}>
-      {label}
-    </span>
-  );
-}
-

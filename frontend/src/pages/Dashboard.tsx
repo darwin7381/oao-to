@@ -1,15 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { type Link as LinkType } from '../lib/api';
 import UserMenu from '../components/UserMenu';
+import { Button } from '../components/ui/Button';
+import { Card, CardContent } from '../components/ui/Card';
+import { Input } from '../components/ui/Input';
+import { Modal } from '../components/ui/Modal';
+import { QRCodeGenerator } from '../components/QRCodeGenerator';
+import { Plus, Search, ExternalLink, BarChart2, Trash2, Calendar, Link as LinkIcon, QrCode, Copy } from 'lucide-react';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [links, setLinks] = useState<LinkType[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState<string | null>(null);
   const [createData, setCreateData] = useState({ url: '', slug: '', title: '' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
 
   useEffect(() => {
     loadLinks();
@@ -17,14 +26,14 @@ export default function Dashboard() {
 
   const loadLinks = async () => {
     setLoading(true);
-    const apiUrl = import.meta.env.PROD 
+    const apiUrl = import.meta.env.PROD
       ? 'https://api.oao.to/test-list'
       : 'http://localhost:8788/test-list';
-    
+
     const shortUrlBase = import.meta.env.PROD
       ? 'https://oao.to'
-      : 'http://localhost:8787';  // core-worker
-    
+      : 'http://localhost:8787';
+
     try {
       const response = await fetch(apiUrl);
       const data = await response.json();
@@ -41,217 +50,273 @@ export default function Dashboard() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const apiUrl = import.meta.env.PROD 
+    setCreateLoading(true);
+
+    const apiUrl = import.meta.env.PROD
       ? 'https://api.oao.to/shorten'
       : 'http://localhost:8788/shorten';
-    
+
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url: createData.url,
-          customSlug: createData.slug || undefined,  // 空字串時不傳，讓後端生成隨機 slug
+          customSlug: createData.slug || undefined,
         }),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || '創建失敗');
+        throw new Error(error.error || 'Creation failed');
       }
 
       const data = await response.json();
-      
-      alert(`✅ 短網址創建成功！\n\n短網址: ${data.shortUrl}\n代碼: ${data.slug}`);
       setShowCreateModal(false);
       setCreateData({ url: '', slug: '', title: '' });
-      
-      // 重新載入列表
       loadLinks();
     } catch (error: any) {
-      alert(`❌ ${error.message}`);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setCreateLoading(false);
     }
   };
 
   const handleDelete = async (slug: string) => {
-    if (!confirm('確定要刪除這個短網址嗎？')) return;
-    
-    try {
-      // 暫時直接從 UI 刪除（稍後實作 API）
-      setLinks(links.filter(l => l.slug !== slug));
-      alert('✅ 已從列表移除');
-    } catch (error: any) {
-      alert(`❌ 刪除失敗：${error.message}`);
-    }
+    if (!confirm('Are you sure you want to delete this link?')) return;
+    setLinks(links.filter(l => l.slug !== slug));
   };
 
-  const copyToClipboard = (text: string) => {
+  const copyLink = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('已複製到剪貼簿');
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">載入中...</p>
-        </div>
-      </div>
-    );
-  }
+  const filteredLinks = links.filter(link =>
+    link.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    link.slug.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link to="/" className="text-2xl font-bold text-blue-600 hover:text-blue-700">
-            OAO.TO
+    <div className="min-h-screen bg-background relative">
+      <div className="absolute top-0 right-0 w-full h-96 bg-gradient-to-b from-orange-50 to-transparent -z-10" />
+
+      <header className="sticky top-0 z-30 bg-white/60 backdrop-blur-xl border-b border-white/50">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="w-8 h-8 rounded-xl bg-orange-400 flex items-center justify-center text-white text-lg font-black shadow-lg shadow-orange-200">
+              O
+            </div>
+            <span className="text-xl font-black text-gray-800">
+              OAO.TO
+            </span>
           </Link>
-          <div className="flex items-center gap-3">
-            <Link to="/" className="btn btn-secondary">
-              ← 回首頁
-            </Link>
+          <div className="flex items-center gap-4">
             <UserMenu />
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold">我的短網址</h2>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn btn-primary"
-          >
-            + 創建短網址
-          </button>
+      <main className="max-w-7xl mx-auto px-6 py-12">
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          <div>
+            <h1 className="text-3xl font-black text-gray-800 mb-2">My Links</h1>
+            <p className="text-gray-500 font-medium">Manage and track your cute shortcuts.</p>
+          </div>
+          <Button onClick={() => setShowCreateModal(true)} size="lg" className="rounded-2xl shadow-xl shadow-orange-200">
+            <Plus className="w-5 h-5 mr-2" />
+            Create New
+          </Button>
         </div>
 
-        {links.length === 0 ? (
-          <div className="card text-center py-12">
-            <p className="text-gray-500 mb-4">還沒有任何短網址</p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn btn-primary"
-            >
-              創建第一個短網址
-            </button>
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <Card className="bg-white border-2 border-orange-50 hover:border-orange-200 transition-all p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-orange-100/50 text-orange-500 rounded-2xl">
+                <LinkIcon className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Total Links</p>
+                <p className="text-3xl font-black text-gray-800">{links.length}</p>
+              </div>
+            </div>
+          </Card>
+          {/* Placeholders for other stats */}
+          <Card className="bg-white border-2 border-blue-50 hover:border-blue-200 transition-all p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-blue-100/50 text-blue-500 rounded-2xl">
+                <BarChart2 className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Total Clicks</p>
+                <p className="text-3xl font-black text-gray-800">-</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="bg-white border-2 border-pink-50 hover:border-pink-200 transition-all p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-pink-100/50 text-pink-500 rounded-2xl">
+                <Calendar className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">This Month</p>
+                <p className="text-3xl font-black text-gray-800">-</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <div className="mb-8 relative max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Input
+            placeholder="Search your links..."
+            className="pl-12 bg-white/80 h-14"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        {/* Links List */}
+        {loading ? (
+          <div className="text-center py-20 flex flex-col items-center">
+            <div className="animate-spin w-10 h-10 border-4 border-orange-400 border-t-transparent rounded-full mb-4" />
+            <p className="text-gray-400 font-medium">Loading your awesomeness...</p>
+          </div>
+        ) : filteredLinks.length === 0 ? (
+          <div className="text-center py-20 bg-white/50 rounded-[3rem] border border-dashed border-gray-200">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-orange-50 mb-6 rotate-6">
+              <LinkIcon className="w-10 h-10 text-orange-300" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">No links yet!</h3>
+            <p className="text-gray-500 mb-8 max-w-sm mx-auto">Your collection is empty. Let's create something useful and cute.</p>
+            <Button variant="outline" onClick={() => setShowCreateModal(true)}>
+              Create First Link
+            </Button>
           </div>
         ) : (
-          <div className="space-y-4">
-            {links.map((link) => (
-              <div key={link.slug} className="card flex justify-between items-center">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <a
-                      href={link.shortUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-lg font-bold text-blue-600 hover:text-blue-700"
-                    >
-                      {link.shortUrl}
-                    </a>
-                    <button
-                      onClick={() => copyToClipboard(link.shortUrl)}
-                      className="text-sm text-gray-500 hover:text-gray-700"
-                    >
-                      📋 複製
-                    </button>
+          <div className="grid gap-4">
+            {filteredLinks.map((link) => (
+              <Card key={link.slug} className="group border-2 border-transparent hover:border-orange-100 transition-all px-0 py-0 overflow-hidden">
+                <div className="p-6 flex flex-col md:flex-row items-center gap-6">
+
+                  {/* Icon */}
+                  <div className="hidden md:flex flex-shrink-0 w-16 h-16 bg-gray-50 rounded-2xl items-center justify-center text-gray-400 group-hover:bg-orange-50 group-hover:text-orange-500 transition-colors">
+                    <ExternalLink className="w-6 h-6" />
                   </div>
-                  <p className="text-sm text-gray-600">{link.title}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    目標：{link.url}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    創建於：{new Date(link.createdAt).toLocaleString('zh-TW')}
-                  </p>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 text-center md:text-left w-full">
+                    <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
+                      <a href={link.shortUrl} target="_blank" rel="noreferrer" className="font-black text-xl text-gray-800 hover:text-orange-500 truncate transition-colors">
+                        {link.shortUrl.replace(/^https?:\/\//, '')}
+                      </a>
+                      <button onClick={() => copyLink(link.shortUrl)} className="hidden md:block p-1 text-gray-300 hover:text-orange-400 transition-colors">
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-500 truncate max-w-2xl font-medium mb-3">
+                      {link.url}
+                    </p>
+                    <div className="flex items-center justify-center md:justify-start gap-4">
+                      <span className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 rounded-full text-xs font-bold text-gray-500">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(link.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 w-full md:w-auto mt-4 md:mt-0 border-t md:border-t-0 pt-4 md:pt-0 border-gray-100">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      onClick={() => setShowQRModal(link.shortUrl)}
+                      className="text-gray-500 hover:text-gray-700 bg-white border-2 border-gray-100 hover:border-gray-200"
+                      title="Show QR Code"
+                    >
+                      <QrCode className="w-5 h-5" />
+                    </Button>
+                    <Link to={`/analytics/${link.slug}`} className="flex-1 md:flex-none">
+                      <Button variant="secondary" className="w-full bg-white border-2 border-gray-100 hover:border-blue-200 hover:text-blue-600">
+                        <BarChart2 className="w-4 h-4 mr-2" />
+                        Stats
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(link.slug)}
+                      className="text-gray-300 hover:text-red-500 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </Button>
+                  </div>
+
                 </div>
-                <div className="flex gap-2">
-                  <Link
-                    to={`/analytics/${link.slug}`}
-                    className="btn btn-secondary"
-                  >
-                    📊 分析
-                  </Link>
-                  <button
-                    onClick={() => handleDelete(link.slug)}
-                    className="btn btn-secondary text-red-600"
-                  >
-                    🗑️ 刪除
-                  </button>
-                </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}
       </main>
 
       {/* Create Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-bold mb-4">創建短網址</h3>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">目標網址</label>
-                <input
-                  type="url"
-                  required
-                  placeholder="https://example.com"
-                  value={createData.url}
-                  onChange={(e) => setCreateData({ ...createData, url: e.target.value })}
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  短網址代碼（可選）
-                </label>
-                <div className="flex gap-2">
-                  <span className="px-4 py-2 bg-gray-100 rounded-lg">oao.to/</span>
-                  <input
-                    type="text"
-                    placeholder="my-link（留空則自動生成隨機代碼）"
-                    value={createData.slug}
-                    onChange={(e) => setCreateData({ ...createData, slug: e.target.value })}
-                    className="input flex-1"
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  💡 留空會自動生成像 "abc123" 這樣的隨機代碼
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">標題（可選）</label>
-                <input
-                  type="text"
-                  placeholder="我的鏈接"
-                  value={createData.title}
-                  onChange={(e) => setCreateData({ ...createData, title: e.target.value })}
-                  className="input"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button type="submit" className="btn btn-primary flex-1">
-                  創建
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="btn btn-secondary flex-1"
-                >
-                  取消
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create New Link"
+      >
+        <form onSubmit={handleCreate} className="space-y-6 pt-2">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700 ml-1">Destination URL</label>
+            <Input
+              autoFocus
+              required
+              placeholder="https://example.com/long-url"
+              value={createData.url}
+              onChange={(e) => setCreateData({ ...createData, url: e.target.value })}
+            />
           </div>
-        </div>
-      )}
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-gray-700 ml-1">Custom Slug (Optional)</label>
+            <div className="flex rounded-2xl shadow-sm">
+              <span className="inline-flex items-center px-5 rounded-l-2xl border-2 border-r-0 border-orange-50 bg-orange-50/50 text-orange-400 font-bold text-sm">
+                oao.to/
+              </span>
+              <Input
+                className="rounded-l-none border-l-0"
+                placeholder="cute-name"
+                value={createData.slug}
+                onChange={(e) => setCreateData({ ...createData, slug: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 flex gap-3">
+            <Button type="button" variant="ghost" className="flex-1" onClick={() => setShowCreateModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={createLoading} className="flex-1">
+              {createLoading ? 'Working...' : 'Create Link'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* QR Modal */}
+      <Modal
+        isOpen={!!showQRModal}
+        onClose={() => setShowQRModal(null)}
+        title="QR Code"
+      >
+        {showQRModal && (
+          <div className="flex justify-center pb-4">
+            <QRCodeGenerator url={showQRModal} size={250} />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
-
