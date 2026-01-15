@@ -2,7 +2,8 @@
 
 **專案**：OAO.TO - 專業短網址服務  
 **版本**：V1.0  
-**更新**：2026-01-14  
+**狀態**：✅ 已部署到生產環境  
+**更新**：2026-01-15  
 
 ---
 
@@ -841,4 +842,25 @@ Frontend（Pages）：
 - ❌ 一次性使用（太複雜）
 
 **我們的定位**：專業、可擴展的生產級服務 ✅
+
+---
+
+## 🚀 生產環境
+
+**已部署**（2026-01-15）：
+```
+✅ Core Worker: https://oao.to
+✅ API Worker: https://api.oao.to
+✅ Frontend: https://28ad8abb.oao-to-app.pages.dev
+⏳ Custom Domain: app.oao.to（需手動設定）
+```
+
+**生產資源 ID**：
+```
+KV Namespace: cb616d868c134b1c9e5e6ef54afb3f64
+D1 Database: bc49236e-acc9-499b-ba68-6aa90a000444
+Analytics Dataset: link_clicks
+```
+
+**詳細部署文檔**：[PRODUCTION_DEPLOYMENT_COMPLETE_GUIDE.md](./PRODUCTION_DEPLOYMENT_COMPLETE_GUIDE.md)
 

@@ -94,7 +94,7 @@ oao.to (core-worker)
 
 api.oao.to (api-worker)
 ├── 職責：API 服務
-├── Port: 55458 (本地) / 443 (生產)
+├── Port: 8788 (本地) / 443 (生產)
 └── 依賴：KV + D1 + Analytics Engine
 
 app.oao.to (frontend - Pages)
@@ -287,13 +287,13 @@ open https://app.oao.to
 ### **同時運行三個服務**
 
 ```bash
-# Terminal 1: Core Worker (port 自動分配，例如 8787)
+# Terminal 1: Core Worker (port 8787，使用 --persist-to 共享 KV)
 cd core-worker
-npm run dev
+wrangler dev --port 8787 --persist-to ../.wrangler/oao-shared
 
-# Terminal 2: API Worker (port 自動分配，例如 55458)
+# Terminal 2: API Worker (port 8788，使用 --persist-to 共享 KV)
 cd api-worker
-npm run dev
+wrangler dev --port 8788 --persist-to ../.wrangler/oao-shared
 
 # Terminal 3: Frontend (port 5173)
 cd frontend
@@ -307,7 +307,7 @@ npm run dev
 open http://localhost:5173
 
 # 2. 創建短網址
-# 前端會調用: http://localhost:55458/shorten
+# 前端會調用: http://localhost:8788/shorten
 
 # 3. 測試重定向
 # 手動訪問: http://localhost:8787/[生成的slug]
@@ -359,25 +359,27 @@ npx wrangler d1 migrations list oao-to-db --remote
 
 ---
 
-## 🎉 完成狀態
+## 🎉 部署狀態
 
-✅ **架構重構完成**：
-- core-worker (oao.to) - 核心轉址
-- api-worker (api.oao.to) - API 服務
-- frontend (app.oao.to) - 前端
+✅ **已部署到生產環境**（2026-01-15）：
+- ✅ Core Worker (https://oao.to)
+- ✅ API Worker (https://api.oao.to)
+- ✅ Frontend (https://28ad8abb.oao-to-app.pages.dev)
 
-✅ **Migration 系統**：
-- 使用官方 D1 Migrations
-- migrations/0001_initial.sql 已準備
+✅ **生產資源**：
+- ✅ Production KV: cb616d868c134b1c9e5e6ef54afb3f64
+- ✅ Production D1: bc49236e-acc9-499b-ba68-6aa90a000444
+- ✅ Migrations 已執行
+- ✅ Secrets 已設定
 
-✅ **URL 環境變數**：
-- 前端自動判斷環境
-- 本地 vs 生產 URL 自動切換
+✅ **功能正常**：
+- ✅ 短網址創建與重定向
+- ✅ Google OAuth 登入
+- ✅ 用戶角色系統
+- ✅ Analytics 功能（數據累積中）
 
-✅ **測試通過**：
-- Core Worker 重定向正常
-- API Worker 功能正常
-- 前端 UI 正常
+⏳ **待完成**：
+- [ ] 設定 app.oao.to Custom Domain（需手動在 Dashboard）
 
-**準備好部署了！** 🚀
+**完整實戰經驗**：參見 [PRODUCTION_DEPLOYMENT_COMPLETE_GUIDE.md](./PRODUCTION_DEPLOYMENT_COMPLETE_GUIDE.md)
 
