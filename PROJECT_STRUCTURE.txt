@@ -1,0 +1,55 @@
+.
+├── ARCHITECTURE.md
+├── DEPLOYMENT_GUIDE.md
+├── PROJECT_STRUCTURE.txt
+├── QUICK_START.md
+├── README.md
+├── STATUS.md
+├── STRUCTURE.txt
+├── api-worker
+│   ├── README.md
+│   ├── backend
+│   ├── migrations
+│   ├── package.json
+│   ├── src
+│   ├── tsconfig.json
+│   ├── worker-configuration.d.ts
+│   └── wrangler.toml
+├── backend
+│   ├── README.md
+│   ├── package.json
+│   ├── schema.sql
+│   ├── src
+│   ├── tsconfig.json
+│   ├── worker-configuration.d.ts
+│   └── wrangler.toml
+├── core-worker
+│   ├── README.md
+│   ├── package.json
+│   ├── src
+│   ├── tsconfig.json
+│   └── wrangler.toml
+├── frontend
+│   ├── README.md
+│   ├── index.html
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── public
+│   ├── src
+│   ├── tailwind.config.js
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   └── vite.config.ts
+└── shorty-dot-dev
+    ├── README.md
+    ├── agenda.md
+    ├── package.json
+    ├── public
+    ├── src
+    ├── test
+    ├── tsconfig.json
+    ├── vitest.config.mts
+    ├── worker-configuration.d.ts
+    └── wrangler.toml
+
+16 directories, 37 files

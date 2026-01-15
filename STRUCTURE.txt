@@ -1,0 +1,37 @@
+.
+├── QUICK_START.md
+├── README.md
+├── STRUCTURE.txt
+├── backend
+│   ├── README.md
+│   ├── package.json
+│   ├── schema.sql
+│   ├── src
+│   ├── tsconfig.json
+│   ├── worker-configuration.d.ts
+│   └── wrangler.toml
+├── frontend
+│   ├── README.md
+│   ├── index.html
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── public
+│   ├── src
+│   ├── tailwind.config.js
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   └── vite.config.ts
+└── shorty-dot-dev
+    ├── README.md
+    ├── agenda.md
+    ├── package-lock.json
+    ├── package.json
+    ├── public
+    ├── src
+    ├── test
+    ├── tsconfig.json
+    ├── vitest.config.mts
+    ├── worker-configuration.d.ts
+    └── wrangler.toml
+
+10 directories, 25 files

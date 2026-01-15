@@ -1,0 +1,19 @@
+{
+  "name": "oao-to-core",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OAO.TO 核心轉址服務",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.4.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240620.0",
+    "typescript": "^5.4.5",
+    "wrangler": "^3.78.12"
+  }
+}
+
