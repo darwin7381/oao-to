@@ -69,16 +69,19 @@ export default function UserMenu() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-0 mt-2 w-72 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-gray-200/50 border border-white/50 ring-1 ring-black/5 z-50 p-2"
+            className="absolute right-0 mt-2 w-72 bg-white/95 backdrop-blur-xl rounded-3xl p-2 animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50 border border-white/60 shadow-xl shadow-gray-200/20"
           >
-            <div className="px-4 py-3 bg-gray-50/50 rounded-xl mb-1 border border-gray-100/50">
-              <div className="flex items-center gap-3">
-                <Avatar src={user.avatar} alt={user.name} size="md" />
-                <div className="overflow-hidden">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+            <div className="p-4 border-b border-gray-100/50 mb-2">
+              <button className="flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full bg-white/70 backdrop-blur-md border border-white/60 shadow-sm hover:shadow-md hover:bg-white/90 transition-all duration-300 group outline-none focus:ring-2 focus:ring-orange-200">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-100 to-pink-100 flex items-center justify-center border border-white">
+                  <Avatar src={user.avatar} alt={user.name} className="w-full h-full" />
                 </div>
-              </div>
+                <div className="flex flex-col items-start px-1">
+                  <span className="text-sm font-bold text-gray-700 group-hover:text-gray-900 transition-colors">{user.name}</span>
+                  <span className="text-xs text-gray-500 truncate">{user.email}</span>
+                </div>
+                <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-orange-400 transition-colors" />
+              </button>
             </div>
 
             <div className="space-y-0.5">

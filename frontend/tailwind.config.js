@@ -50,7 +50,7 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       animation: {
-        'float': 'float 3s ease-in-out infinite',
+        'float': 'float 20s ease-in-out infinite',
       },
       keyframes: {
         float: {
