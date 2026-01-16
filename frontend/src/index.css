@@ -10,68 +10,43 @@
 @layer base {
   :root {
     /* Fresh & Cute Palette */
-    /* Background: Warm Cream (Eggshell) */
-    --background: 40 33% 98%;
+    /* Background: Vibrant Warm Cream (High Saturation for Contrast) */
+    --background: 38 90% 96%;
     --foreground: 222 47% 11%;
 
     /* Card: Pure White */
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
-
-    /* Popover */
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-
-    /* Primary: Soft Coral / Peach (#FF8B8B) */
-    --primary: 0 100% 77%;
-    --primary-foreground: 0 0% 100%;
-
-    /* Secondary: Fresh Mint (#4ADE80) */
-    --secondary: 142 69% 58%;
-    --secondary-foreground: 144 70% 20%;
-
-    /* Muted: Soft Gray */
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    /* Accent: Soft Lavender/Blue (#EOE7FF) */
-    --accent: 225 100% 94%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    /* Destructive: Soft Red */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 0 100% 77%;
-
-    /* Extra Rounded Corners */
-    --radius: 1.5rem;
-    /* 24px */
-  }
-}
-
-@layer base {
-  * {
-    border-color: hsl(var(--border));
-  }
-
-  body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary-foreground;
-    font-family: 'Nunito', sans-serif;
   }
 }
 
 @layer utilities {
+  .glass-panel {
+    /* White Frosted Glass - High Opacity for Readability */
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  }
+
+  .glass-panel:hover {
+    background: rgba(255, 255, 255, 0.85);
+    /* Whiter on hover */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+    transform: translateY(-2px);
+  }
+
   .glass-card {
-    @apply bg-white/60 backdrop-blur-xl border border-white/40 shadow-xl shadow-warm-gray/5;
+    @apply bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl shadow-warm-gray/5;
+    backdrop-filter: saturate(180%) blur(20px);
   }
 
   .text-balance {
     text-wrap: balance;
   }
 
+  /* Bubbly Animation */
   .hover-bounce {
     @apply transition-transform hover:scale-105 active:scale-95 duration-300;
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);

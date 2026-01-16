@@ -97,8 +97,12 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-background relative">
-      <div className="absolute top-0 right-0 w-full h-96 bg-gradient-to-b from-orange-50 to-transparent -z-10" />
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Vibrant Blobs for Dashboard Glass Effect */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div className="absolute top-[-20%] right-[-5%] w-[600px] h-[600px] bg-blue-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float" />
+        <div className="absolute top-[20%] left-[-10%] w-[500px] h-[500px] bg-orange-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float" style={{ animationDelay: '3s' }} />
+      </div>
 
       <header className="sticky top-0 z-30 bg-white/60 backdrop-blur-xl border-b border-white/50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
