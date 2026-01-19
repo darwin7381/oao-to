@@ -259,7 +259,7 @@ async function trackClick(
         cfProperties.longitude || 0,
         cfProperties.latitude || 0,
       ],
-      indexes: [slug, linkData.userId],
+      indexes: [slug],  // 只使用 slug 作為 index（最多支援 1 個）
     });
   } catch (error) {
     console.error('Failed to track click:', error);

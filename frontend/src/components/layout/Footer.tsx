@@ -25,10 +25,10 @@ export default function Footer() {
                     <div>
                         <h4 className="font-bold text-gray-800 mb-4">Product</h4>
                         <ul className="space-y-2 text-sm text-gray-500">
-                            <li><Link to="#" className="hover:text-orange-500 transition-colors">URL Shortener</Link></li>
-                            <li><Link to="#" className="hover:text-orange-500 transition-colors">QR Codes</Link></li>
-                            <li><Link to="#" className="hover:text-orange-500 transition-colors">Link-in-Bio</Link></li>
-                            <li><Link to="#" className="hover:text-orange-500 transition-colors">Analytics</Link></li>
+                            <li><Link to="/" className="hover:text-orange-500 transition-colors">URL Shortener</Link></li>
+                            <li><Link to="/features" className="hover:text-orange-500 transition-colors">Features</Link></li>
+                            <li><Link to="/pricing" className="hover:text-orange-500 transition-colors">Pricing</Link></li>
+                            <li><Link to="/dashboard" className="hover:text-orange-500 transition-colors">Analytics</Link></li>
                         </ul>
                     </div>
 
@@ -38,7 +38,7 @@ export default function Footer() {
                         <ul className="space-y-2 text-sm text-gray-500">
                             <li><Link to="#" className="hover:text-orange-500 transition-colors">Blog</Link></li>
                             <li><Link to="#" className="hover:text-orange-500 transition-colors">Developers</Link></li>
-                            <li><Link to="#" className="hover:text-orange-500 transition-colors">Support</Link></li>
+                            <li><Link to="/support" className="hover:text-orange-500 transition-colors">Support</Link></li>
                             <li><Link to="#" className="hover:text-orange-500 transition-colors">Status</Link></li>
                         </ul>
                     </div>
@@ -49,8 +49,8 @@ export default function Footer() {
                         <ul className="space-y-2 text-sm text-gray-500">
                             <li><Link to="#" className="hover:text-orange-500 transition-colors">About</Link></li>
                             <li><Link to="#" className="hover:text-orange-500 transition-colors">Careers</Link></li>
-                            <li><Link to="#" className="hover:text-orange-500 transition-colors">Privacy</Link></li>
-                            <li><Link to="#" className="hover:text-orange-500 transition-colors">Terms</Link></li>
+                            <li><Link to="/privacy" className="hover:text-orange-500 transition-colors">Privacy</Link></li>
+                            <li><Link to="/terms" className="hover:text-orange-500 transition-colors">Terms</Link></li>
                         </ul>
                     </div>
                 </div>

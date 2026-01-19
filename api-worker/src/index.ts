@@ -8,6 +8,8 @@ import authRouter from './routes/auth';
 import linksRouter from './routes/links';
 import analyticsRouter from './routes/analytics';
 import adminRouter from './routes/admin';
+import testAnalyticsRouter from './routes/test-analytics';
+import testEnvRouter from './routes/test-env';
 import type { Env, LinkData } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -16,7 +18,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.use('*', cors({
   origin: [
     'https://app.oao.to',
-    'https://28ad8abb.oao-to-app.pages.dev',  // Pages 預設網址
+    'https://f6010623.oao-to-app.pages.dev',  // Pages 預設網址（最新）
     'http://localhost:5173',  // 本地開發
     'http://localhost:3000'
   ],
@@ -74,7 +76,7 @@ app.post('/shorten', async (c) => {
     title: url,
   };
 
-  // 存入 KV
+  // ✅ 只存入 KV（單一數據源，與 Dashboard 和分析頁面保持一致）
   await c.env.LINKS.put(`link:${slug}`, JSON.stringify(linkData));
 
   const baseUrl = c.req.header('host')?.includes('localhost') 
@@ -163,6 +165,8 @@ app.route('/api/auth', authRouter);
 app.route('/api/links', linksRouter);
 app.route('/api/analytics', analyticsRouter);
 app.route('/api/admin', adminRouter);
+app.route('/api/test-analytics', testAnalyticsRouter);
+app.route('/api/test-env', testEnvRouter);
 
 // 404 處理
 app.notFound((c) => {

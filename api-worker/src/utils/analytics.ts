@@ -34,7 +34,7 @@ export async function trackClick(
         cfProperties.longitude || 0,       // double2: 經度
         cfProperties.latitude || 0,        // double3: 緯度
       ],
-      indexes: [slug, userId],             // 索引：加速查詢
+      indexes: [slug],                     // 索引：只使用 slug（最多支援 1 個）
     });
   } catch (error) {
     console.error('Failed to track click:', error);
@@ -48,6 +48,7 @@ export async function queryAnalytics(
   const API = `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/analytics_engine/sql`;
   
   try {
+    // 根據 Cloudflare 官方文檔，SQL 查詢應該直接放在 body 中（不是 JSON）
     const response = await fetch(API, {
       method: 'POST',
       headers: {
@@ -55,6 +56,12 @@ export async function queryAnalytics(
       },
       body: sql,
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Analytics query failed:', response.status, errorText);
+      return [];
+    }
 
     const jsonResponse = await response.json() as any;
     return jsonResponse.data || [];

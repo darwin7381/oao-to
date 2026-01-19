@@ -31,6 +31,15 @@ analytics.get('/:slug', async (c) => {
 
   // 🧪 開發階段：移除檢查，直接查詢
   try {
+    // 0. 從 KV 獲取鏈接詳細信息（與 Dashboard 和重定向保持一致）
+    const linkDataStr = await c.env.LINKS.get(`link:${slug}`);
+    
+    if (!linkDataStr) {
+      return c.json({ error: 'Link not found' }, 404);
+    }
+
+    const linkData = JSON.parse(linkDataStr);
+
     // 1. 總點擊數
     const totalClicks = await queryAnalytics(c.env, `
       SELECT COUNT() as total
@@ -74,6 +83,9 @@ analytics.get('/:slug', async (c) => {
 
     return c.json({
       slug,
+      url: linkData.url || '',
+      title: linkData.title || '',
+      createdAt: linkData.createdAt || null,
       totalClicks: totalClicks[0]?.total || 0,
       byCountry: byCountry || [],
       byDay: byDay || [],
