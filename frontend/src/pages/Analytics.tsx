@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, type Analytics as AnalyticsType } from '../lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
-import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, MousePointerClick, Globe, Smartphone, Calendar, BarChart3, Loader2, Copy, Check, ExternalLink, Link2, QrCode, CornerDownRight, Image as ImageIcon, PenLine } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, ArrowRight, MousePointerClick, Globe, Smartphone, Calendar, BarChart3, Loader2, Copy, Check, ExternalLink, Link2, QrCode, CornerDownRight, Image as ImageIcon, PenLine, X, ScanLine, Download } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import Header from '../components/layout/Header';
@@ -89,7 +89,7 @@ export default function Analytics() {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background font-nunito flex flex-col">
-      {/* 🔮 RESTORED: Animated Background Blobs from Home */}
+      {/* 🔮 Background Blobs */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-purple-300/40 rounded-full mix-blend-multiply filter blur-3xl opacity-80 animate-float will-change-transform" />
         <div className="absolute top-[10%] right-[-10%] w-[500px] h-[500px] bg-orange-300/40 rounded-full mix-blend-multiply filter blur-3xl opacity-80 animate-float will-change-transform" style={{ animationDelay: '2s' }} />
@@ -140,76 +140,90 @@ export default function Analytics() {
               animate="show"
               className="space-y-12"
             >
-              {/* 🚀 ITERATION 9: THE STANDARD (Bitly/Dub Clone) */}
+              {/* 🚀 ITERATION 22: NUCLEAR REDESIGN (Strict & Clean) */}
               <motion.div variants={itemVariants}>
-                <Card className="bg-white border border-gray-200 shadow-sm overflow-hidden rounded-2xl">
-                  <div className="flex flex-col lg:flex-row p-8 lg:p-10 gap-10">
+                <Card className="bg-white/90 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-orange-500/10 rounded-[2.5rem] relative group hover:shadow-orange-500/20 transition-all duration-500 z-10 w-full">
 
-                    {/* LEFT COLUMN: Metadata & Actions (The Workhorse) */}
-                    <div className="flex-1 space-y-8">
+                  {/* Fresh Gradient Accent */}
+                  <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-orange-100/30 via-pink-100/20 to-transparent blur-3xl -mr-32 -mt-32 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-tr-[2.5rem]" />
+
+                  <div className="flex flex-col lg:flex-row p-8 lg:p-12 gap-10 relative z-10">
+
+                    {/* LEFT COLUMN: Metadata & Actions */}
+                    <div className="flex-1 space-y-8 min-w-0">
 
                       {/* 1. Header: Favicon + Clean Title */}
                       <div className="flex items-start gap-5">
-                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex-shrink-0">
+                        <div className="p-4 bg-white rounded-2xl border border-orange-100 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
                           <img
                             src={`https://www.google.com/s2/favicons?domain=${new URL(analytics.url).hostname}&sz=64`}
                             alt="favicon"
-                            className="w-8 h-8 object-contain"
+                            className="w-10 h-10 object-contain"
                             onError={(e) => { e.currentTarget.src = "https://www.google.com/s2/favicons?domain=google.com"; }}
                           />
                         </div>
-                        <div className="space-y-1.5 pt-1">
-                          {/* STRICT TITLE SANITIZATION */}
-                          <h1 className="text-2xl font-bold text-gray-900 leading-tight">
+                        <div className="space-y-2 pt-1 min-w-0">
+                          <h1 className="text-3xl font-black text-gray-900 leading-tight tracking-tight truncate">
                             {(!analytics.title || analytics.title.includes('http') || analytics.title.includes('www.') || analytics.title.length > 100)
-                              ? new URL(analytics.url).hostname.toUpperCase()
+                              ? new URL(analytics.url).hostname.replace('www.', '').toUpperCase()
                               : analytics.title}
                           </h1>
 
-                          <div className="flex items-center gap-3 text-sm text-gray-500 font-medium">
-                            <div className="flex items-center gap-1.5">
-                              <Calendar className="w-4 h-4" />
-                              <span>{analytics.createdAt ? new Date(analytics.createdAt).toLocaleDateString() : 'Just now'}</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-white/80 rounded-full border border-orange-100">
+                              <Calendar className="w-3.5 h-3.5 text-orange-400" />
+                              <span className="text-xs font-bold text-gray-600">{analytics.createdAt ? new Date(analytics.createdAt).toLocaleDateString() : 'Just now'}</span>
                             </div>
-                            <span className="text-gray-300">•</span>
-                            <div className="flex items-center gap-1.5">
-                              <Globe className="w-4 h-4" />
-                              <span>{new URL(analytics.url).hostname}</span>
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-white/80 rounded-full border border-blue-100">
+                              <Globe className="w-3.5 h-3.5 text-blue-400" />
+                              <span className="text-xs font-bold text-gray-600 truncate max-w-[200px]">{new URL(analytics.url).hostname}</span>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* 2. The Link Box (Dub/Bitly Style) */}
-                      <div className="space-y-3">
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Short Link</label>
-                        <div className="flex items-center bg-gray-50 border border-gray-200 p-1.5 rounded-xl gap-2">
+                      {/* 2. Short Link Asset (STRICT LAYOUT) */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Short Link Asset</label>
 
-                          <div className="flex-1 bg-white border border-gray-200 rounded-lg px-4 py-3 flex items-center shadow-sm">
-                            <span className="text-gray-400 font-medium select-none">oao.to/</span>
-                            <span className="text-gray-900 font-bold text-lg">{slug}</span>
-                          </div>
+                        <div className="flex flex-col sm:flex-row gap-3 h-auto sm:h-[72px]">
+                          {/* Input Capsule: Link + Copy (Full width minus 72px) */}
+                          <div className="flex-1 bg-white border-2 border-orange-100 rounded-2xl flex items-center justify-between p-2 pl-6 shadow-sm hover:border-orange-300 transition-all duration-300 cursor-text group/input" onClick={handleCopy}>
+                            <div className="flex items-baseline gap-0.5 min-w-0 overflow-hidden" >
+                              <span className="text-orange-400 font-bold text-xl select-none flex-shrink-0">oao.to/</span>
+                              <span className="text-gray-900 font-bold text-xl tracking-tight truncate group-hover/input:text-orange-600 transition-colors">{slug}</span>
+                            </div>
 
-                          <div className="flex items-center gap-1 pr-1">
                             <Button
-                              variant="ghost"
-                              onClick={handleCopy}
+                              onClick={(e) => { e.stopPropagation(); handleCopy(); }}
                               className={cn(
-                                "h-11 px-4 font-bold text-gray-600 hover:text-gray-900 hover:bg-white hover:shadow-sm transition-all rounded-lg border border-transparent hover:border-gray-200",
-                                copied && "text-green-600 bg-green-50 hover:bg-green-100 hover:text-green-700"
+                                "h-full px-8 font-bold text-base rounded-xl transition-all ml-4 flex-shrink-0",
+                                copied
+                                  ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                  : "bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700"
                               )}
                             >
-                              {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                              {copied ? <Check className="w-5 h-5 mr-2" /> : <Copy className="w-5 h-5 mr-2" />}
                               {copied ? "Copied" : "Copy"}
                             </Button>
+                          </div>
 
-                            <div className="relative group/qr">
-                              <Button variant="ghost" className="h-11 w-11 p-0 text-gray-500 hover:text-gray-900 hover:bg-white hover:shadow-sm transition-all rounded-lg border border-transparent hover:border-gray-200">
-                                <QrCode className="w-5 h-5" />
-                              </Button>
-                              {/* QR Popover */}
-                              <div className="absolute top-full right-0 mt-2 hidden group-hover/qr:block p-4 bg-white rounded-xl shadow-xl border border-gray-100 z-50 animate-in fade-in zoom-in-95 duration-200">
-                                <QRCodeGenerator url={`https://oao.to/${slug}`} size={120} />
+                          {/* QR Trigger: Fixed 72px Square (Sibling) */}
+                          <div className="w-[72px] h-[72px] bg-white border-2 border-orange-100 rounded-2xl flex items-center justify-center relative group/qr shadow-sm hover:border-orange-300 transition-all cursor-pointer flex-shrink-0 z-20">
+                            {/* The Visible Thumbnail (Scaled Down) */}
+                            <div className="p-3 w-full h-full flex items-center justify-center">
+                              <QRCodeGenerator url={`https://oao.to/${slug}`} />
+                            </div>
+
+                            {/* The Popover (Floating Top-Right) */}
+                            <div className="absolute bottom-full right-0 mb-3 hidden group-hover/qr:block z-50 pointer-events-none group-hover/qr:pointer-events-auto">
+                              <div className="bg-white p-5 rounded-[2rem] shadow-2xl shadow-orange-900/10 border border-orange-100 w-56 flex flex-col items-center animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                {/* Large QR */}
+                                <div className="bg-white p-2 rounded-xl mb-3 border border-orange-50">
+                                  <QRCodeGenerator url={`https://oao.to/${slug}`} />
+                                </div>
+                                {/* Caption (NO BUTTON) */}
+                                <p className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">Scan to Visit</p>
                               </div>
                             </div>
                           </div>
@@ -217,15 +231,19 @@ export default function Analytics() {
                       </div>
 
                       {/* 3. Destination Row */}
-                      <div className="flex items-start gap-3 pl-2 group/dest">
-                        <CornerDownRight className="w-5 h-5 text-gray-300 mt-0.5 group-hover/dest:text-gray-500 transition-colors" />
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Destination URL</span>
+                      <div className="mt-6 p-4 rounded-xl bg-emerald-50/50 border-2 border-dashed border-emerald-200/60 flex items-start gap-4 group/dest hover:bg-emerald-50 transition-colors">
+                        <div className="mt-0.5 p-1.5 bg-emerald-100 rounded-lg text-emerald-600 group-hover/dest:scale-110 transition-transform duration-300">
+                          <CornerDownRight className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] uppercase font-bold text-emerald-600 mb-0.5 tracking-widest flex items-center gap-1">
+                            Target Destination
+                          </div>
                           <a
                             href={analytics.url}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-gray-500 hover:text-blue-600 hover:underline truncate break-all transition-colors leading-snug font-mono text-sm"
+                            className="text-sky-500 font-bold font-mono text-sm break-all hover:underline decoration-sky-300 underline-offset-4 leading-relaxed block group-hover/dest:text-sky-600 transition-colors"
                           >
                             {analytics.url}
                           </a>
@@ -233,34 +251,46 @@ export default function Analytics() {
                       </div>
                     </div>
 
-                    {/* RIGHT COLUMN: Link Preview (The "Social Card") */}
-                    <div className="hidden lg:block w-[380px] flex-shrink-0">
-                      <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden shadow-sm h-full flex flex-col">
-                        {/* Mock Image Area */}
-                        <div className="h-44 bg-gray-100 w-full flex items-center justify-center border-b border-gray-200/60 relative group cursor-pointer" onClick={() => window.open(analytics.url, '_blank')}>
-                          <div className="absolute inset-0 bg-gray-200/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <ExternalLink className="w-8 h-8 text-gray-500" />
+                    {/* RIGHT COLUMN: Link Preview */}
+                    <div className="hidden lg:block w-[380px] flex-shrink-0 perspective-1000">
+                      <div className="p-2 border-2 border-dashed border-gray-200 rounded-[2.2rem]">
+                        <div className="bg-white rounded-[1.8rem] border border-gray-100 shadow-xl shadow-gray-200/40 overflow-hidden h-full flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-100 group/card cursor-pointer rotate-1 hover:rotate-0 transform origin-center will-change-transform" onClick={() => window.open(analytics.url, '_blank')}>
+
+                          {/* Mock Image Area */}
+                          <div className="h-48 bg-gray-50 w-full flex items-center justify-center border-b border-gray-100 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 group-hover/card:scale-110 transition-transform duration-700" />
+                            <ImageIcon className="w-16 h-16 text-gray-300 relative z-10 group-hover/card:text-orange-200 transition-colors duration-500" />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 bg-black/5 backdrop-blur-[2px]">
+                              <div className="px-4 py-2 bg-white/90 backdrop-blur-md rounded-full shadow-lg font-bold text-gray-800 text-sm flex items-center gap-2 transform translate-y-4 group-hover/card:translate-y-0 transition-transform duration-300">
+                                <ExternalLink className="w-4 h-4" /> Visit Site
+                              </div>
+                            </div>
                           </div>
-                          <ImageIcon className="w-12 h-12 text-gray-300" />
-                        </div>
 
-                        {/* Content Area */}
-                        <div className="p-6 flex flex-col gap-3 flex-1 bg-white">
-                          <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">{new URL(analytics.url).hostname.replace('www.', '')}</div>
+                          {/* Content Area */}
+                          <div className="p-6 flex flex-col gap-3 flex-1 bg-white relative">
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={`https://www.google.com/s2/favicons?domain=${new URL(analytics.url).hostname}&sz=32`}
+                                className="w-4 h-4 rounded-full opacity-70"
+                              />
+                              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{new URL(analytics.url).hostname.replace('www.', '')}</span>
+                            </div>
 
-                          <h3 className="font-bold text-gray-900 leading-snug line-clamp-2">
-                            {(!analytics.title || analytics.title.includes('http') || analytics.title.includes('www.') || analytics.title.length > 100)
-                              ? new URL(analytics.url).hostname.toUpperCase()
-                              : analytics.title}
-                          </h3>
+                            <h3 className="font-bold text-gray-900 leading-snug line-clamp-2 text-lg group-hover/card:text-orange-600 transition-colors">
+                              {(!analytics.title || analytics.title.includes('http') || analytics.title.includes('www.') || analytics.title.length > 100)
+                                ? new URL(analytics.url).hostname.toUpperCase()
+                                : analytics.title}
+                            </h3>
 
-                          <p className="text-sm text-gray-500 line-clamp-3 leading-relaxed">
-                            {analytics.description || `This link redirects to ${new URL(analytics.url).hostname}. Analysis and tracking provided by OAO.TO.`}
-                          </p>
+                            <p className="text-sm text-gray-500 line-clamp-3 leading-relaxed">
+                              {analytics.description || `This link redirects to ${new URL(analytics.url).hostname}. Analysis and tracking provided by OAO.TO.`}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <p className="text-center text-xs font-medium text-gray-400 mt-3 select-none">
-                        Preview
+                      <p className="text-center text-xs font-bold text-gray-300 mt-4 select-none tracking-widest uppercase animate-pulse">
+                        Live Preview
                       </p>
                     </div>
 
