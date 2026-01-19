@@ -1,7 +1,7 @@
 // API 客戶端
 
-const API_BASE = import.meta.env.PROD 
-  ? 'https://api.oao.to/api' 
+const API_BASE = import.meta.env.PROD
+  ? 'https://api.oao.to/api'
   : 'http://localhost:8788/api';
 
 export interface Link {
@@ -14,6 +14,9 @@ export interface Link {
 
 export interface Analytics {
   slug: string;
+  url: string;
+  title?: string;
+  createdAt?: string;
   totalClicks: number;
   byCountry: { country: string; clicks: number }[];
   byDay: { date: string; clicks: number }[];
