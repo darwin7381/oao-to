@@ -8,8 +8,6 @@ import authRouter from './routes/auth';
 import linksRouter from './routes/links';
 import analyticsRouter from './routes/analytics';
 import adminRouter from './routes/admin';
-import testAnalyticsRouter from './routes/test-analytics';
-import testEnvRouter from './routes/test-env';
 import type { Env, LinkData } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -18,7 +16,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.use('*', cors({
   origin: [
     'https://app.oao.to',
-    'https://f6010623.oao-to-app.pages.dev',  // Pages 預設網址（最新）
+    'https://63b5ef92.oao-to-app.pages.dev',  // Pages 預設網址（最新）
     'http://localhost:5173',  // 本地開發
     'http://localhost:3000'
   ],
@@ -74,14 +72,38 @@ app.post('/shorten', async (c) => {
     userId: 'anonymous',  // 公開創建的標記為 anonymous
     createdAt: Date.now(),
     title: url,
+    isActive: true,
   };
 
-  // ✅ 只存入 KV（單一數據源，與 Dashboard 和分析頁面保持一致）
+  // ✅ 存入 KV
   await c.env.LINKS.put(`link:${slug}`, JSON.stringify(linkData));
 
   const baseUrl = c.req.header('host')?.includes('localhost') 
     ? `http://${c.req.header('host')}`
     : 'https://oao.to';
+
+  // 🚀 背景異步抓取元數據並更新（不阻塞響應）
+  c.executionCtx.waitUntil(
+    (async () => {
+      try {
+        const { fetchMetadata } = await import('./utils/fetch-metadata');
+        const metadata = await fetchMetadata(url);
+        
+        const updatedData: LinkData = {
+          ...linkData,
+          title: metadata.title,
+          description: metadata.description,
+          image: metadata.image,
+          updatedAt: Date.now(),
+        };
+        
+        await c.env.LINKS.put(`link:${slug}`, JSON.stringify(updatedData));
+        console.log(`✅ Metadata fetched for ${slug}:`, metadata);
+      } catch (error) {
+        console.error(`❌ Failed to fetch metadata for ${slug}:`, error);
+      }
+    })()
+  );
 
   return c.json({
     success: true,
@@ -115,7 +137,33 @@ app.get('/test-list', async (c) => {
   }
 });
 
-// 🔥 核心功能：短網址重定向（最關鍵！）
+// 社交媒體爬蟲列表
+const SOCIAL_BOTS = [
+  'facebookexternalhit',
+  'Facebot',
+  'twitterbot',
+  'LinkedInBot',
+  'Discordbot',
+  'TelegramBot',
+  'WhatsApp',
+  'Slackbot',
+  'Pinterest',
+  'redditbot',
+];
+
+/**
+ * HTML 轉義（防止 XSS）
+ */
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// 🔥 核心功能：短網址重定向（混合策略 + Cache API）
 app.get('/:slug', async (c) => {
   const slug = c.req.param('slug');
   
@@ -125,6 +173,31 @@ app.get('/:slug', async (c) => {
   }
 
   try {
+    const userAgent = c.req.header('user-agent') || '';
+    
+    // 檢測是否為社交媒體爬蟲
+    const isSocialBot = SOCIAL_BOTS.some(bot => 
+      userAgent.toLowerCase().includes(bot.toLowerCase())
+    );
+
+    // 🚀 Cache API：創建快取 key
+    const cacheType = isSocialBot ? 'social' : 'user';
+    const cacheKey = new Request(
+      `https://cache.oao.to/${slug}/${cacheType}`,
+      { method: 'GET' }
+    );
+    
+    const cache = caches.default;
+    
+    // 嘗試從快取讀取
+    let cachedResponse = await cache.match(cacheKey);
+    if (cachedResponse) {
+      console.log(`Cache HIT: ${slug}/${cacheType}`);
+      return cachedResponse;
+    }
+    
+    console.log(`Cache MISS: ${slug}/${cacheType}`);
+
     // 從 KV 獲取鏈接數據
     const linkDataStr = await c.env.LINKS.get(`link:${slug}`);
     
@@ -137,6 +210,11 @@ app.get('/:slug', async (c) => {
     // 檢查是否過期
     if (linkData.expiresAt && Date.now() > linkData.expiresAt) {
       return c.text('Link expired', 410);
+    }
+
+    // 檢查是否停用
+    if (linkData.isActive === false) {
+      return c.text('Link disabled', 403);
     }
 
     // 檢查密碼保護
@@ -152,21 +230,114 @@ app.get('/:slug', async (c) => {
       trackClick(c.env, slug, linkData.url, linkData.userId, c.req.raw)
     );
 
-    // 重定向到目標網址
-    return c.redirect(linkData.url, 301);
+    let response: Response;
+
+    // 🎯 混合策略：根據是否有自定義預覽決定返回內容
+    if (isSocialBot && (linkData.title || linkData.description || linkData.image)) {
+      // 有預覽內容：返回 HTML with Open Graph 標籤
+      const previewTitle = linkData.title || linkData.url;
+      const previewDescription = linkData.description || `通過 OAO.TO 訪問：${linkData.url}`;
+      const previewImage = linkData.image || `https://oao.to/default-og.png`;
+      
+      const baseUrl = c.req.header('host')?.includes('localhost')
+        ? `http://${c.req.header('host')}`
+        : 'https://oao.to';
+
+      const html = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(previewTitle)}</title>
+  
+  <!-- Open Graph (Facebook, LinkedIn, Discord, Telegram) -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${baseUrl}/${slug}">
+  <meta property="og:title" content="${escapeHtml(previewTitle)}">
+  <meta property="og:description" content="${escapeHtml(previewDescription)}">
+  <meta property="og:image" content="${escapeHtml(previewImage)}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="OAO.TO">
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(previewTitle)}">
+  <meta name="twitter:description" content="${escapeHtml(previewDescription)}">
+  <meta name="twitter:image" content="${escapeHtml(previewImage)}">
+  
+  <!-- 自動重定向 -->
+  <meta http-equiv="refresh" content="0;url=${escapeHtml(linkData.url)}">
+  
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 500px;
+    }
+    a { color: #667eea; text-decoration: none; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔗 正在重定向...</h1>
+    <p>如果沒有自動跳轉，請點擊以下連結：</p>
+    <p><a href="${escapeHtml(linkData.url)}">${escapeHtml(linkData.url)}</a></p>
+  </div>
+  <script>
+    setTimeout(() => {
+      window.location.href = ${JSON.stringify(linkData.url)};
+    }, 100);
+  </script>
+</body>
+</html>`;
+
+      response = new Response(html, {
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=3600', // 快取 1 小時
+        }
+      });
+    } else {
+      // 無自定義預覽或非社交爬蟲：直接 301 重定向
+      response = new Response(null, {
+        status: 301,
+        headers: {
+          'Location': linkData.url,
+          'Cache-Control': 'public, max-age=3600', // 快取 1 小時
+        }
+      });
+    }
+
+    // 🚀 異步存入快取（不阻塞響應）
+    c.executionCtx.waitUntil(
+      cache.put(cacheKey, response.clone())
+    );
+
+    return response;
+    
   } catch (error) {
     console.error('Redirect error:', error);
     return c.text('Internal server error', 500);
   }
 });
 
-// API 路由
+// API 路由（所有 CRUD 操作都在 linksRouter 中）
 app.route('/api/auth', authRouter);
 app.route('/api/links', linksRouter);
 app.route('/api/analytics', analyticsRouter);
 app.route('/api/admin', adminRouter);
-app.route('/api/test-analytics', testAnalyticsRouter);
-app.route('/api/test-env', testEnvRouter);
 
 // 404 處理
 app.notFound((c) => {

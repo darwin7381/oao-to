@@ -19,9 +19,18 @@ export interface LinkData {
   url: string;
   userId: string;
   createdAt: number;
+  updatedAt?: number;
   expiresAt?: number;
   password?: string;
+  
+  // 元數據（創建時自動抓取，用戶可編輯）
   title?: string;
+  description?: string;
+  image?: string;
+  
+  // 其他設定
+  tags?: string[];
+  isActive?: boolean;
 }
 
 export type UserRole = 'user' | 'admin' | 'superadmin';
