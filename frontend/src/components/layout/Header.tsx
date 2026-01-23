@@ -19,17 +19,23 @@ export default function Header() {
     return (
         <header
             className={cn(
-                "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
+                "fixed top-0 left-0 right-0 z-50",
                 scrolled ? "py-2" : "py-4"
             )}
+            style={{
+                transition: 'padding 0.3s ease-out'
+            }}
         >
             <div
                 className={cn(
-                    "max-w-6xl mx-auto px-6 rounded-full transition-all duration-300 ease-out",
+                    "max-w-6xl mx-auto rounded-full",
                     scrolled 
-                        ? "bg-white/80 backdrop-blur-md shadow-lg shadow-orange-500/5 w-[calc(100%-2rem)] border border-white/50" 
-                        : "bg-transparent border-transparent w-full"
+                        ? "bg-white/80 backdrop-blur-md shadow-lg shadow-orange-500/5 border border-white/50 px-8 w-[calc(100%-3rem)]" 
+                        : "bg-transparent border-transparent px-6 w-full"
                 )}
+                style={{
+                    transition: 'background-color 0.3s ease-out, border-color 0.3s ease-out, box-shadow 0.3s ease-out, padding 0.3s ease-out'
+                }}
             >
                 <div className="flex justify-between items-center h-16">
                     {/* Logo */}
