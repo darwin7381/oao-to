@@ -9,13 +9,20 @@ export interface Link {
   url: string;
   title: string;
   createdAt: number;
+  updatedAt?: number;
   shortUrl: string;
+  description?: string;
+  image?: string;
+  tags?: string[];
+  isActive?: boolean;
 }
 
 export interface Analytics {
   slug: string;
   url: string;
   title?: string;
+  description?: string;
+  image?: string;
   createdAt?: string;
   totalClicks: number;
   byCountry: { country: string; clicks: number }[];
@@ -69,10 +76,23 @@ class API {
     });
   }
 
-  async updateLink(slug: string, data: { url?: string; title?: string }): Promise<Link> {
+  async updateLink(slug: string, data: {
+    url?: string;
+    title?: string;
+    description?: string;
+    image?: string;
+    tags?: string[];
+    isActive?: boolean;
+  }): Promise<{ success: boolean; data: Link }> {
     return this.request(`/links/${slug}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+
+  async refetchMetadata(slug: string): Promise<{ success: boolean; data: Link; metadata: any }> {
+    return this.request(`/links/${slug}/refetch`, {
+      method: 'POST',
     });
   }
 

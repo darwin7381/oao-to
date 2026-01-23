@@ -85,6 +85,8 @@ analytics.get('/:slug', async (c) => {
       slug,
       url: linkData.url || '',
       title: linkData.title || '',
+      description: linkData.description || '',
+      image: linkData.image || '',
       createdAt: linkData.createdAt || null,
       totalClicks: totalClicks[0]?.total || 0,
       byCountry: byCountry || [],

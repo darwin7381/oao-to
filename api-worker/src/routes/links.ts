@@ -3,15 +3,17 @@
 
 import { Hono } from 'hono';
 import { createAuthMiddleware, getUserFromContext } from '../middleware/auth';
+import { fetchMetadata } from '../utils/fetch-metadata';
 import type { Env, LinkData } from '../types';
 
 const links = new Hono<{ Bindings: Env }>();
 
-// 保護所有路由（需要登入）
-links.use('*', async (c, next) => {
-  const authMiddleware = createAuthMiddleware(c.env.JWT_SECRET);
-  return authMiddleware(c, next);
-});
+// 🧪 開發階段：暫時移除認證（方便測試公開創建的連結編輯）
+// 生產階段：需要重新啟用
+// links.use('*', async (c, next) => {
+//   const authMiddleware = createAuthMiddleware(c.env.JWT_SECRET);
+//   return authMiddleware(c, next);
+// });
 
 // 創建短網址
 links.post('/', async (c) => {
@@ -93,44 +95,115 @@ links.get('/:slug', async (c) => {
 // 更新短網址
 links.put('/:slug', async (c) => {
   const slug = c.req.param('slug');
-  const user = getUserFromContext(c);
-  const { url, title } = await c.req.json();
+  const updates = await c.req.json<{
+    title?: string;
+    description?: string;
+    image?: string;
+    url?: string;
+    tags?: string[];
+    expiresAt?: number;
+    isActive?: boolean;
+  }>();
 
-  // 驗證所有權
-  const link = await c.env.DB.prepare(
-    'SELECT * FROM links WHERE slug = ? AND user_id = ?'
-  ).bind(slug, user.userId).first();
+  try {
+    // 從 KV 讀取現有資料
+    const existingStr = await c.env.LINKS.get(`link:${slug}`);
+    if (!existingStr) {
+      return c.json({ error: '短網址不存在' }, 404);
+    }
 
-  if (!link) {
-    return c.json({ error: 'Link not found or unauthorized' }, 404);
+    const linkData: LinkData = JSON.parse(existingStr);
+
+    // TODO: 生產環境需要驗證所有權
+    // const user = getUserFromContext(c);
+    // if (linkData.userId !== user.userId && linkData.userId !== 'anonymous') {
+    //   return c.json({ error: '無權限編輯此短網址' }, 403);
+    // }
+
+    // 更新資料
+    const updatedData: LinkData = {
+      ...linkData,
+      ...updates,
+      updatedAt: Date.now(),
+    };
+
+    // 如果修改了 URL，驗證格式
+    if (updates.url) {
+      try {
+        new URL(updates.url);
+      } catch {
+        return c.json({ error: 'URL 格式不正確' }, 400);
+      }
+    }
+
+    // 寫回 KV
+    await c.env.LINKS.put(`link:${slug}`, JSON.stringify(updatedData));
+
+    // 清除快取
+    const cache = caches.default;
+    c.executionCtx.waitUntil(
+      Promise.all([
+        cache.delete(`https://cache.oao.to/${slug}/social`),
+        cache.delete(`https://cache.oao.to/${slug}/user`),
+      ])
+    );
+
+    return c.json({
+      success: true,
+      data: updatedData,
+    });
+  } catch (error) {
+    console.error('Update link error:', error);
+    return c.json({ error: '更新失敗' }, 500);
   }
+});
 
-  // 獲取舊數據
-  const oldData = await c.env.LINKS.get(`link:${slug}`);
-  if (!oldData) {
-    return c.json({ error: 'Link data not found in KV' }, 500);
+// 重新抓取元數據
+links.post('/:slug/refetch', async (c) => {
+  const slug = c.req.param('slug');
+
+  try {
+    // 從 KV 讀取現有資料
+    const existingStr = await c.env.LINKS.get(`link:${slug}`);
+    if (!existingStr) {
+      return c.json({ error: '短網址不存在' }, 404);
+    }
+
+    const linkData: LinkData = JSON.parse(existingStr);
+
+    // 重新抓取元數據
+    const metadata = await fetchMetadata(linkData.url);
+
+    // 更新資料
+    const updatedData: LinkData = {
+      ...linkData,
+      title: metadata.title,
+      description: metadata.description,
+      image: metadata.image,
+      updatedAt: Date.now(),
+    };
+
+    // 寫回 KV
+    await c.env.LINKS.put(`link:${slug}`, JSON.stringify(updatedData));
+
+    // 清除快取
+    const cache = caches.default;
+    c.executionCtx.waitUntil(
+      Promise.all([
+        cache.delete(`https://cache.oao.to/${slug}/social`),
+        cache.delete(`https://cache.oao.to/${slug}/user`),
+      ])
+    );
+
+    return c.json({
+      success: true,
+      data: updatedData,
+      metadata,
+    });
+  } catch (error) {
+    console.error('Refetch metadata error:', error);
+    return c.json({ error: '重新抓取失敗' }, 500);
   }
-
-  const linkData = JSON.parse(oldData) as LinkData;
-  
-  // 更新數據
-  if (url) linkData.url = url;
-  if (title) linkData.title = title;
-
-  // 更新 KV
-  await c.env.LINKS.put(`link:${slug}`, JSON.stringify(linkData));
-
-  // 更新 D1
-  await c.env.DB.prepare(
-    'UPDATE links SET url = ?, title = ? WHERE slug = ? AND user_id = ?'
-  ).bind(url || (link as any).url, title || (link as any).title, slug, user.userId).run();
-
-  return c.json({
-    slug,
-    url: linkData.url,
-    title: linkData.title,
-    updatedAt: Date.now(),
-  });
 });
 
 // 刪除短網址

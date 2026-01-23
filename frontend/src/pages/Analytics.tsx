@@ -3,9 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import { api, type Analytics as AnalyticsType } from '../lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, MousePointerClick, Globe, Smartphone, Calendar, BarChart3, Loader2, Copy, Check, ExternalLink, Link2, QrCode, CornerDownRight, Image as ImageIcon, PenLine, X, ScanLine, Download } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MousePointerClick, Globe, Smartphone, Calendar, BarChart3, Loader2, Copy, Check, ExternalLink, Link2, QrCode, CornerDownRight, Image as ImageIcon, PenLine, X, ScanLine, Download, Edit2, RefreshCw } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { Input } from '../components/ui/Input';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { cn } from '../lib/utils';
@@ -41,6 +42,14 @@ export default function Analytics() {
   const [analytics, setAnalytics] = useState<AnalyticsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [editingField, setEditingField] = useState<'title' | 'description' | 'image' | null>(null);
+  const [editValues, setEditValues] = useState({
+    title: '',
+    description: '',
+    image: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [refetching, setRefetching] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -55,6 +64,99 @@ export default function Analytics() {
     navigator.clipboard.writeText(`https://oao.to/${slug}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadQR = () => {
+    const svg = document.querySelector('#qr-download-target svg');
+    if (!svg) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+
+    img.onload = () => {
+      canvas.width = 1000;
+      canvas.height = 1000;
+      ctx?.drawImage(img, 0, 0, 1000, 1000);
+      const pngFile = canvas.toDataURL("image/png");
+      const downloadLink = document.createElement("a");
+      downloadLink.download = `oao-${slug}-qr.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+  };
+
+  const handleStartEdit = (field: 'title' | 'description' | 'image') => {
+    if (!analytics) return;
+    
+    setEditingField(field);
+    setEditValues({
+      title: analytics.title || '',
+      description: analytics.description || '',
+      image: analytics.image || '',
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingField(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!analytics || !slug || !editingField) return;
+    
+    setSaving(true);
+    try {
+      const result = await api.updateLink(slug, {
+        title: editValues.title,
+        description: editValues.description,
+        image: editValues.image,
+      });
+      
+      setAnalytics(prev => prev ? {
+        ...prev,
+        title: result.data.title,
+        description: result.data.description,
+        image: result.data.image,
+      } : null);
+      
+      setEditingField(null);
+    } catch (error) {
+      console.error('Failed to save:', error);
+      alert('儲存失敗，請重試');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRefetch = async () => {
+    if (!analytics || !slug) return;
+    
+    setRefetching(true);
+    try {
+      const result = await api.refetchMetadata(slug);
+      
+      setAnalytics(prev => prev ? {
+        ...prev,
+        title: result.data.title,
+        description: result.data.description,
+        image: result.data.image,
+      } : null);
+      
+      setEditValues({
+        title: result.data.title || '',
+        description: result.data.description || '',
+        image: result.data.image || '',
+      });
+      
+    } catch (error) {
+      console.error('Failed to refetch:', error);
+      alert('重新抓取失敗，請重試');
+    } finally {
+      setRefetching(false);
+    }
   };
 
   const containerVariants = {
@@ -140,7 +242,7 @@ export default function Analytics() {
               animate="show"
               className="space-y-12"
             >
-              {/* 🚀 ITERATION 22: NUCLEAR REDESIGN (Strict & Clean) */}
+              {/* 🚀 ITERATION 22 & 23: NUCLEAR REDESIGN (Strict & Clean) + UX Polish */}
               <motion.div variants={itemVariants}>
                 <Card className="bg-white/90 backdrop-blur-2xl border border-white/60 shadow-2xl shadow-orange-500/10 rounded-[2.5rem] relative group hover:shadow-orange-500/20 transition-all duration-500 z-10 w-full">
 
@@ -163,11 +265,54 @@ export default function Analytics() {
                           />
                         </div>
                         <div className="space-y-2 pt-1 min-w-0">
-                          <h1 className="text-3xl font-black text-gray-900 leading-tight tracking-tight truncate">
-                            {(!analytics.title || analytics.title.includes('http') || analytics.title.includes('www.') || analytics.title.length > 100)
-                              ? new URL(analytics.url).hostname.replace('www.', '').toUpperCase()
-                              : analytics.title}
-                          </h1>
+                          {/* 標題編輯 */}
+                          <div className="flex items-center gap-3 group/title">
+                            {editingField === 'title' ? (
+                              <div className="flex-1 flex items-center gap-2">
+                                <Input
+                                  value={editValues.title}
+                                  onChange={(e) => setEditValues({ ...editValues, title: e.target.value })}
+                                  className="text-2xl font-bold"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveEdit();
+                                    if (e.key === 'Escape') handleCancelEdit();
+                                  }}
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={handleSaveEdit}
+                                  disabled={saving}
+                                  className="bg-green-500 hover:bg-green-600 text-white"
+                                >
+                                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={handleCancelEdit}
+                                  disabled={saving}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                <h1 className="text-3xl font-black text-gray-900 leading-tight tracking-tight truncate">
+                                  {(analytics.title && !analytics.title.includes('http') && !analytics.title.includes('www.') && analytics.title.length <= 100)
+                                    ? analytics.title
+                                    : new URL(analytics.url).hostname.replace('www.', '').toUpperCase()}
+                                </h1>
+                                <button
+                                  onClick={() => handleStartEdit('title')}
+                                  className="flex-shrink-0 opacity-0 group-hover/title:opacity-100 transition-opacity p-2 hover:bg-orange-50 rounded-lg text-orange-600"
+                                  title="編輯標題"
+                                >
+                                  <PenLine className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                          </div>
 
                           <div className="flex flex-wrap items-center gap-2">
                             <div className="flex items-center gap-1.5 px-3 py-1 bg-white/80 rounded-full border border-orange-100">
@@ -182,7 +327,7 @@ export default function Analytics() {
                         </div>
                       </div>
 
-                      {/* 2. Short Link Asset (STRICT LAYOUT) */}
+                      {/* 2. Short Link Asset (STRICT LAYOUT + HOVER DELAY) */}
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Short Link Asset</label>
 
@@ -216,15 +361,30 @@ export default function Analytics() {
                             </div>
 
                             {/* The Popover (Floating Top-Right) */}
-                            <div className="absolute bottom-full right-0 mb-3 hidden group-hover/qr:block z-50 pointer-events-none group-hover/qr:pointer-events-auto">
-                              <div className="bg-white p-5 rounded-[2rem] shadow-2xl shadow-orange-900/10 border border-orange-100 w-56 flex flex-col items-center animate-in fade-in slide-in-from-bottom-2 duration-200">
+                            <div className="absolute bottom-full right-0 mb-3 z-50 pointer-events-none group-hover/qr:pointer-events-auto
+                                       opacity-0 invisible translate-y-2 scale-95
+                                       group-hover/qr:opacity-100 group-hover/qr:visible group-hover/qr:translate-y-0 group-hover/qr:scale-100
+                                       transition-all duration-500 ease-out group-hover/qr:duration-200 delay-100 group-hover/qr:delay-0">
+
+                              <div className="bg-white p-5 rounded-[2rem] shadow-2xl shadow-orange-900/10 border border-orange-100 w-56 flex flex-col items-center">
                                 {/* Large QR */}
-                                <div className="bg-white p-2 rounded-xl mb-3 border border-orange-50">
+                                <div id="qr-download-target" className="bg-white p-2 rounded-xl mb-3 border border-orange-50 w-full flex items-center justify-center">
                                   <QRCodeGenerator url={`https://oao.to/${slug}`} />
                                 </div>
-                                {/* Caption (NO BUTTON) */}
-                                <p className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">Scan to Visit</p>
+
+                                {/* Action Button (INSIDE POPOVER) */}
+                                <Button
+                                  size="sm"
+                                  onClick={handleDownloadQR}
+                                  className="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold rounded-xl h-9"
+                                >
+                                  <Download className="w-4 h-4 mr-2" />
+                                  Save Image
+                                </Button>
                               </div>
+
+                              {/* Invisible Bridge to prevent mouse gap issues */}
+                              <div className="absolute top-full left-0 w-full h-3 bg-transparent"></div>
                             </div>
                           </div>
                         </div>
@@ -253,14 +413,60 @@ export default function Analytics() {
 
                     {/* RIGHT COLUMN: Link Preview */}
                     <div className="hidden lg:block w-[380px] flex-shrink-0 perspective-1000">
+                      {/* 重新抓取按鈕 */}
+                      <div className="flex justify-end mb-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleRefetch}
+                          disabled={refetching}
+                          className="bg-white hover:bg-blue-50 border-blue-200 text-blue-600"
+                        >
+                          <RefreshCw className={`w-4 h-4 mr-1.5 ${refetching ? 'animate-spin' : ''}`} />
+                          {refetching ? '抓取中...' : '重新抓取元數據'}
+                        </Button>
+                      </div>
+                      
                       <div className="p-2 border-2 border-dashed border-gray-200 rounded-[2.2rem]">
                         <div className="bg-white rounded-[1.8rem] border border-gray-100 shadow-xl shadow-gray-200/40 overflow-hidden h-full flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-100 group/card cursor-pointer rotate-1 hover:rotate-0 transform origin-center will-change-transform" onClick={() => window.open(analytics.url, '_blank')}>
 
-                          {/* Mock Image Area */}
-                          <div className="h-48 bg-gray-50 w-full flex items-center justify-center border-b border-gray-100 relative overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 group-hover/card:scale-110 transition-transform duration-700" />
-                            <ImageIcon className="w-16 h-16 text-gray-300 relative z-10 group-hover/card:text-orange-200 transition-colors duration-500" />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 bg-black/5 backdrop-blur-[2px]">
+                          {/* Preview Image Area - 可編輯 */}
+                          <div className="h-48 bg-gray-50 w-full flex items-center justify-center border-b border-gray-100 relative overflow-hidden group/image">
+                            {analytics.image ? (
+                              <>
+                                <img 
+                                  src={analytics.image} 
+                                  alt="Preview" 
+                                  className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-700"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.parentElement?.querySelector('.fallback-icon')?.classList.remove('hidden');
+                                  }}
+                                />
+                                <div className="fallback-icon hidden absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                                  <ImageIcon className="w-16 h-16 text-gray-300" />
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 group-hover/card:scale-110 transition-transform duration-700" />
+                                <ImageIcon className="w-16 h-16 text-gray-300 relative z-10 group-hover/card:text-orange-200 transition-colors duration-500" />
+                              </>
+                            )}
+                            
+                            {/* 編輯圖片按鈕 */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartEdit('image');
+                              }}
+                              className="absolute top-3 right-3 opacity-0 group-hover/image:opacity-100 transition-opacity p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white text-orange-600 z-20"
+                              title="編輯預覽圖片"
+                            >
+                              <PenLine className="w-4 h-4" />
+                            </button>
+                            
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 bg-black/5 backdrop-blur-[2px] pointer-events-none">
                               <div className="px-4 py-2 bg-white/90 backdrop-blur-md rounded-full shadow-lg font-bold text-gray-800 text-sm flex items-center gap-2 transform translate-y-4 group-hover/card:translate-y-0 transition-transform duration-300">
                                 <ExternalLink className="w-4 h-4" /> Visit Site
                               </div>
@@ -277,21 +483,108 @@ export default function Analytics() {
                               <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{new URL(analytics.url).hostname.replace('www.', '')}</span>
                             </div>
 
+                            {/* 預覽標題 - 只顯示不可編輯（主標題已可編輯） */}
                             <h3 className="font-bold text-gray-900 leading-snug line-clamp-2 text-lg group-hover/card:text-orange-600 transition-colors">
-                              {(!analytics.title || analytics.title.includes('http') || analytics.title.includes('www.') || analytics.title.length > 100)
-                                ? new URL(analytics.url).hostname.toUpperCase()
-                                : analytics.title}
+                              {(analytics.title && !analytics.title.includes('http') && !analytics.title.includes('www.') && analytics.title.length <= 100)
+                                ? analytics.title
+                                : new URL(analytics.url).hostname.toUpperCase()}
                             </h3>
 
-                            <p className="text-sm text-gray-500 line-clamp-3 leading-relaxed">
-                              {analytics.description || `This link redirects to ${new URL(analytics.url).hostname}. Analysis and tracking provided by OAO.TO.`}
-                            </p>
+                            {/* 預覽描述 - 可編輯 */}
+                            <div className="group/desc">
+                              {editingField === 'description' ? (
+                                <div className="space-y-2">
+                                  <textarea
+                                    value={editValues.description}
+                                    onChange={(e) => setEditValues({ ...editValues, description: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                                    rows={3}
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Escape') handleCancelEdit();
+                                    }}
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={handleSaveEdit}
+                                      disabled={saving}
+                                      className="bg-green-500 hover:bg-green-600 text-white"
+                                    >
+                                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={handleCancelEdit}
+                                      disabled={saving}
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="relative">
+                                  <p className="text-sm text-gray-500 line-clamp-3 leading-relaxed">
+                                    {analytics.description || `This link redirects to ${new URL(analytics.url).hostname}. Analysis and tracking provided by OAO.TO.`}
+                                  </p>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStartEdit('description');
+                                    }}
+                                    className="absolute -top-1 -right-1 opacity-0 group-hover/desc:opacity-100 transition-opacity p-1.5 bg-white rounded-lg shadow-md hover:bg-orange-50 text-orange-600"
+                                    title="編輯描述"
+                                  >
+                                    <PenLine className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <p className="text-center text-xs font-bold text-gray-300 mt-4 select-none tracking-widest uppercase animate-pulse">
-                        Live Preview
+                      <p className="text-center text-xs font-bold text-gray-300 mt-4 select-none tracking-widest uppercase">
+                        預覽卡片
                       </p>
+                      
+                      {/* 圖片 URL 編輯 */}
+                      {editingField === 'image' && (
+                        <div className="mt-4 p-4 bg-white rounded-xl border-2 border-orange-200 shadow-lg space-y-3">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            預覽圖片 URL
+                          </label>
+                          <Input
+                            value={editValues.image}
+                            onChange={(e) => setEditValues({ ...editValues, image: e.target.value })}
+                            placeholder="https://example.com/image.png"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveEdit();
+                              if (e.key === 'Escape') handleCancelEdit();
+                            }}
+                          />
+                          <p className="text-xs text-gray-500">建議尺寸：1200×630 像素</p>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={handleSaveEdit}
+                              disabled={saving}
+                              className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                            >
+                              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-1.5" /> 儲存</>}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleCancelEdit}
+                              disabled={saving}
+                            >
+                              <X className="w-4 h-4 mr-1.5" /> 取消
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                   </div>
