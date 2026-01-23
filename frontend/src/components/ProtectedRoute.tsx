@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -29,4 +29,5 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   // 已登入則顯示內容
   return <>{children}</>;
 }
+
 

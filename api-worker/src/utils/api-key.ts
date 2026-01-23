@@ -10,7 +10,7 @@ export interface ApiKeyResult {
 /**
  * 生成 API Key
  * @param env 環境（live 或 test）
- * @returns API Key 相關資訊
+ * @returns API Key 相關資訊（⚠️ key 只返回一次！）
  */
 export async function generateApiKey(
   env: 'live' | 'test' = 'live'
@@ -25,7 +25,7 @@ export async function generateApiKey(
     byte.toString(36).padStart(2, '0')
   ).join('').substring(0, 20);
   
-  // 組合完整 Key
+  // 組合完整 Key: oao_{env}_{random}
   const prefix = `oao_${env}_`;
   const key = prefix + randomPart;
   
@@ -34,9 +34,9 @@ export async function generateApiKey(
   
   return {
     id,
-    key,
+    key,           // ⚠️ 完整的 API Key，只在創建時返回一次！
     keyPrefix: prefix,
-    keyHash,
+    keyHash,       // 存入資料庫的是這個
   };
 }
 
@@ -74,4 +74,5 @@ export function extractApiKeyEnv(key: string): 'live' | 'test' | null {
   if (key.startsWith('oao_test_')) return 'test';
   return null;
 }
+
 

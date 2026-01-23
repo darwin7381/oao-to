@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
@@ -14,7 +14,6 @@ import Stats from '../components/landing/Stats';
 import HowItWorks from '../components/landing/HowItWorks';
 
 export default function NewHome() {
-  useAuth();
   const [searchParams] = useSearchParams();
   const [url, setUrl] = useState('');
   const [customSlug, setCustomSlug] = useState('');
@@ -144,7 +143,7 @@ export default function NewHome() {
                 transition={{ delay: 0.2, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 className="max-w-2xl mx-auto"
               >
-                <Card className="glass-panel p-3 bg-white/70 backdrop-blur-xl border-white/60 shadow-2xl shadow-orange-500/10 hover:bg-white/80 transition-all duration-300">
+                <Card className="glass-panel p-3">
                   <form onSubmit={handleShorten} className="flex flex-col md:flex-row gap-3">
                     <div className="flex-1 relative">
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-300">

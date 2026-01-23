@@ -67,3 +67,4 @@ else
     echo "❌ CLOUDFLARE_API_TOKEN 前綴錯誤 (${CLOUDFLARE_API_TOKEN:0:10}, 應為 VtfR76VD6-)"
 fi
 
+

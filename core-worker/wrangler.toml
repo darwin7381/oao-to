@@ -36,4 +36,3 @@ id = "cb616d868c134b1c9e5e6ef54afb3f64"
 [[env.production.analytics_engine_datasets]]
 binding = "TRACKER"
 dataset = "link_clicks"
-

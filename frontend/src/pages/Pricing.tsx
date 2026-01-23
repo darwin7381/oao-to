@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Check, Zap, Crown, Rocket, HelpCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { Card } from '../components/ui/Card';
@@ -304,4 +304,5 @@ export default function Pricing() {
     </div>
   );
 }
+
 

@@ -8,6 +8,9 @@ import authRouter from './routes/auth';
 import linksRouter from './routes/links';
 import analyticsRouter from './routes/analytics';
 import adminRouter from './routes/admin';
+import apiKeysRouter from './routes/api-keys';
+import accountRouter from './routes/account';
+import v1LinksRouter from './routes/v1-links';
 import type { Env, LinkData } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -338,6 +341,13 @@ app.route('/api/auth', authRouter);
 app.route('/api/links', linksRouter);
 app.route('/api/analytics', analyticsRouter);
 app.route('/api/admin', adminRouter);
+
+// API 平台路由
+app.route('/api/account/keys', apiKeysRouter);  // API Key 管理
+app.route('/api/account', accountRouter);       // Credits 和使用統計
+
+// V1 Public API（需要 API Key）
+app.route('/v1/links', v1LinksRouter);          // 公開 API 端點
 
 // 404 處理
 app.notFound((c) => {

@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { type Link as LinkType } from '../lib/api';
-import UserMenu from '../components/UserMenu';
 import { Button } from '../components/ui/Button';
-import { Card, CardContent } from '../components/ui/Card';
+import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
@@ -97,30 +96,10 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Vibrant Blobs for Dashboard Glass Effect */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-        <div className="absolute top-[-20%] right-[-5%] w-[600px] h-[600px] bg-blue-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float" />
-        <div className="absolute top-[20%] left-[-10%] w-[500px] h-[500px] bg-orange-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float" style={{ animationDelay: '3s' }} />
-      </div>
+    <div className="min-h-full">
+      {/* Background and Header now handled by DashboardLayout */}
 
-      <header className="sticky top-0 z-30 bg-white/60 backdrop-blur-xl border-b border-white/50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-xl bg-orange-400 flex items-center justify-center text-white text-lg font-black shadow-lg shadow-orange-200">
-              O
-            </div>
-            <span className="text-xl font-black text-gray-800">
-              OAO.TO
-            </span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <UserMenu />
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
@@ -263,7 +242,7 @@ export default function Dashboard() {
             ))}
           </div>
         )}
-      </main>
+      </div>
 
       {/* Create Modal */}
       <Modal
