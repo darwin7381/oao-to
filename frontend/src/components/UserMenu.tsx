@@ -69,10 +69,10 @@ export default function UserMenu() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-0 mt-2 w-72 bg-white/95 backdrop-blur-xl rounded-3xl p-2 animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50 border border-white/60 shadow-xl shadow-gray-200/20"
+            className="absolute right-0 mt-2 w-72 bg-white/80 backdrop-blur-xl rounded-3xl p-2 animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50 border border-white/60 shadow-xl shadow-gray-200/20"
           >
             <div className="p-4 border-b border-gray-100/50 mb-2">
-              <button className="flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full bg-white/70 backdrop-blur-md border border-white/60 shadow-sm hover:shadow-md hover:bg-white/90 transition-all duration-300 group outline-none focus:ring-2 focus:ring-orange-200">
+              <button className="flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full bg-transparent border-transparent shadow-sm hover:bg-white/20 transition-all duration-300 group outline-none focus:ring-2 focus:ring-orange-200">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-100 to-pink-100 flex items-center justify-center border border-white">
                   <Avatar src={user.avatar} alt={user.name} className="w-full h-full" />
                 </div>

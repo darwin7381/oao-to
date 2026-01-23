@@ -428,7 +428,7 @@ export default function Analytics() {
                       </div>
                       
                       <div className="p-2 border-2 border-dashed border-gray-200 rounded-[2.2rem]">
-                        <div className="bg-white rounded-[1.8rem] border border-gray-100 shadow-xl shadow-gray-200/40 overflow-hidden h-full flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-100 group/card cursor-pointer rotate-1 hover:rotate-0 transform origin-center will-change-transform" onClick={() => window.open(analytics.url, '_blank')}>
+                        <div className="bg-white rounded-[1.8rem] border border-gray-100 shadow-xl shadow-gray-200/40 overflow-hidden h-full flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:border-orange-100 group/card cursor-pointer rotate-1 hover:rotate-0 transform origin-center" onClick={() => window.open(analytics.url, '_blank')}>
 
                           {/* Preview Image Area - 可編輯 */}
                           <div className="h-48 bg-gray-50 w-full flex items-center justify-center border-b border-gray-100 relative overflow-hidden group/image">
