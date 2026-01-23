@@ -56,4 +56,3 @@ migrations_dir = "migrations"
 [[env.production.analytics_engine_datasets]]
 binding = "TRACKER"
 dataset = "link_clicks"
-

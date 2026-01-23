@@ -1,30 +1,30 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function AuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { refreshAuth } = useAuth();
   const [status, setStatus] = useState('處理中...');
 
   useEffect(() => {
     const token = searchParams.get('token');
     
-    console.log('[AuthCallback] Received token:', token ? 'YES' : 'NO');
-    
     if (token) {
       setStatus('✅ 登入成功！儲存 token...');
       localStorage.setItem('token', token);
-      console.log('[AuthCallback] Token saved to localStorage');
       
-      setTimeout(() => {
+      // 刷新認證狀態
+      refreshAuth().then(() => {
         setStatus('✅ 跳轉中...');
-        navigate('/');
-      }, 500);
+        setTimeout(() => navigate('/dashboard'), 300);
+      });
     } else {
       setStatus('❌ 沒有收到 token');
       setTimeout(() => navigate('/'), 1500);
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, refreshAuth]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">

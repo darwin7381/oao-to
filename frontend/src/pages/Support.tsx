@@ -15,7 +15,7 @@ import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Support() {
   const { user } = useAuth();
@@ -330,4 +330,5 @@ export default function Support() {
     </div>
   );
 }
+
 

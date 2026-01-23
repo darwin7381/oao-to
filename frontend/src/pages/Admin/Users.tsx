@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 import { useRole } from '../../hooks/useRole';
 import UserMenu from '../../components/UserMenu';
 import Avatar from '../../components/Avatar';
@@ -15,7 +15,7 @@ interface User {
 }
 
 export default function AdminUsers() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, token } = useAuth();
   const { isSuperAdmin } = useRole();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,11 +23,11 @@ export default function AdminUsers() {
 
   // 載入用戶列表（路由已確保有權限，直接載入）
   useEffect(() => {
+    if (!token) return;
 
     const apiBase = window.location.hostname === 'localhost' 
       ? 'http://localhost:8788' 
       : 'https://api.oao.to';
-    const token = localStorage.getItem('token');
 
     fetch(`${apiBase}/api/admin/users`, {
       headers: {
@@ -47,7 +47,7 @@ export default function AdminUsers() {
         setError(err.message);
         setLoading(false);
       });
-  }, []);
+  }, [token]);
 
   // 更新用戶角色
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -60,10 +60,11 @@ export default function AdminUsers() {
       return;
     }
 
+    if (!token) return;
+    
     const apiBase = window.location.hostname === 'localhost' 
       ? 'http://localhost:8788' 
       : 'https://api.oao.to';
-    const token = localStorage.getItem('token');
 
     try {
       const response = await fetch(`${apiBase}/api/admin/users/${userId}/role`, {

@@ -49,3 +49,4 @@ export default function Avatar({ src, alt, size = 'md', className = '' }: Avatar
   );
 }
 
+

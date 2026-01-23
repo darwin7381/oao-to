@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
+import { AuthProvider } from './contexts/AuthContext';
 import NewHome from './pages/NewHome';
 import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
@@ -15,9 +16,12 @@ import Pricing from './pages/Pricing';
 import FeaturesPage from './pages/FeaturesPage';
 import Support from './pages/Support';
 import LinkPreview from './pages/LinkPreview';
+import ApiKeys from './pages/ApiKeys';
+import Credits from './pages/Credits';
+import ApiDocs from './pages/ApiDocs';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
-
+import DashboardLayout from './components/layout/DashboardLayout';
 // 路由結構：
 // / - 公開首頁（快速縮短）
 // /auth/callback - OAuth 回調
@@ -34,55 +38,82 @@ import AdminRoute from './components/AdminRoute';
 // * - 404 錯誤頁面
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <Routes>
         <Route path="/" element={<NewHome />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        
+
         {/* Public Pages */}
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/support" element={<Support />} />
-        <Route path="/:slug/preview" element={<LinkPreview />} />
-        
-        {/* Protected Pages */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/analytics/:slug" 
-          element={
-            <ProtectedRoute>
-              <Analytics />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/settings" 
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          } 
-        />
-        
+        {/* Protected Pages with Dashboard Layout */}
+        <Route element={<DashboardLayout />}>
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics/:slug"
+            element={
+              <ProtectedRoute>
+                <Analytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/api-keys"
+            element={
+              <ProtectedRoute>
+                <ApiKeys />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/credits"
+            element={
+              <ProtectedRoute>
+                <Credits />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/api-docs"
+            element={
+              <ApiDocs />
+            }
+          />
+        </Route>
+
         {/* Admin Pages */}
-        <Route 
-          path="/admin/users" 
+        <Route
+          path="/admin/users"
           element={
             <AdminRoute>
               <AdminUsers />
             </AdminRoute>
-          } 
+          }
         />
-        
+
         {/* 404 Page */}
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -91,8 +122,8 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+  <AuthProvider>
     <App />
-  </React.StrictMode>,
+  </AuthProvider>,
 );
 

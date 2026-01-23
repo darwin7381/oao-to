@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { useRole } from '../hooks/useRole';
 import Avatar from './Avatar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, LogOut, Users, BarChart3, ChevronDown, User } from 'lucide-react';
+import { LayoutDashboard, LogOut, Users, BarChart3, ChevronDown, User, Key, Wallet, BookOpen } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
 
@@ -92,6 +92,35 @@ export default function UserMenu() {
               >
                 <LayoutDashboard className="w-4 h-4" />
                 <span>Dashboard</span>
+              </Link>
+
+              {/* API Platform */}
+              <div className="my-1 px-3 py-1">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">API Platform</p>
+              </div>
+              <Link
+                to="/api-keys"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
+              >
+                <Key className="w-4 h-4" />
+                <span>API Keys</span>
+              </Link>
+              <Link
+                to="/credits"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
+              >
+                <Wallet className="w-4 h-4" />
+                <span>Credits & Usage</span>
+              </Link>
+              <Link
+                to="/api-docs"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>API Documentation</span>
               </Link>
 
               {/* Admin Links */}

@@ -32,3 +32,4 @@ CREATE INDEX idx_links_created_at ON links(created_at DESC);
 -- INSERT INTO users (id, email, name, created_at) VALUES 
 --   ('system', 'system@oao.to', 'System', strftime('%s', 'now') * 1000);
 
+

@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { useRole } from '../hooks/useRole';
 
 interface AdminRouteProps {
@@ -59,4 +59,5 @@ export default function AdminRoute({ children, requireSuperAdmin = false }: Admi
   // 有權限則顯示內容
   return <>{children}</>;
 }
+
 

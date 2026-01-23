@@ -47,3 +47,4 @@ export function hasPermission(userRole: UserRole, requiredRole: UserRole): boole
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
 }
 
+
