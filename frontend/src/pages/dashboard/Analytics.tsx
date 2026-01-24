@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api, type Analytics as AnalyticsType } from '../lib/api';
+import { api, type Analytics as AnalyticsType } from '../../lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { motion } from 'framer-motion';
 import { ArrowLeft, MousePointerClick, Globe, Smartphone, Calendar, BarChart3, Loader2, Copy, Check, ExternalLink, CornerDownRight, Image as ImageIcon, PenLine, X, Download, RefreshCw } from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { cn } from '../lib/utils';
-import { QRCodeGenerator } from '../components/QRCodeGenerator';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { cn } from '../../lib/utils';
+import { QRCodeGenerator } from '../../components/QRCodeGenerator';
 
 // Custom Tooltip for Recharts
 const CustomTooltip = ({ active, payload, label }: any) => {

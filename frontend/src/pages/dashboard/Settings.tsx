@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Bell, Shield, Mail, AlertTriangle, Globe, Smartphone, Lock } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Modal } from '../components/ui/Modal';
-import { cn } from '../lib/utils';
+import { useAuth } from '../../contexts/AuthContext';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Modal } from '../../components/ui/Modal';
+import { cn } from '../../lib/utils';
 
 export default function Settings() {
   const { user, logout } = useAuth();

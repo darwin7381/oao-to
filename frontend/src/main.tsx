@@ -4,21 +4,21 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
 import { AuthProvider } from './contexts/AuthContext';
 import NewHome from './pages/NewHome';
-import Dashboard from './pages/Dashboard';
-import Analytics from './pages/Analytics';
+import Dashboard from './pages/dashboard/Dashboard';
+import Analytics from './pages/dashboard/Analytics';
 import AuthCallback from './pages/AuthCallback';
 import AdminUsers from './pages/Admin/Users';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import NotFound from './pages/NotFound';
-import Settings from './pages/Settings';
+import Settings from './pages/dashboard/Settings';
 import Pricing from './pages/Pricing';
 import FeaturesPage from './pages/FeaturesPage';
 import Support from './pages/Support';
 import LinkPreview from './pages/LinkPreview';
-import ApiKeys from './pages/ApiKeys';
-import Credits from './pages/Credits';
-import ApiDocs from './pages/ApiDocs';
+import ApiKeys from './pages/dashboard/ApiKeys';
+import Credits from './pages/dashboard/Credits';
+import ApiDocs from './pages/dashboard/ApiDocs';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -26,11 +26,14 @@ import DashboardLayout from './components/layout/DashboardLayout';
 // / - 公開首頁（快速縮短）
 // /auth/callback - OAuth 回調
 // /dashboard - 管理儀表板（需登入）
-// /analytics/:slug - 分析頁面（需登入）
+// /dashboard/analytics/:slug - 分析頁面（需登入）
+// /dashboard/settings - 用戶設定（需登入）
+// /dashboard/api-keys - API 金鑰管理（需登入）
+// /dashboard/credits - Credits & Usage（需登入）
+// /dashboard/api-docs - API 文件
 // /admin/users - 用戶管理（需 admin 權限）
 // /privacy - 隱私政策
 // /terms - 服務條款
-// /settings - 用戶設定（需登入）
 // /pricing - 價格方案
 // /features - 功能介紹
 // /support - 支援中心
@@ -65,7 +68,7 @@ function App() {
             }
           />
           <Route
-            path="/analytics/:slug"
+            path="/dashboard/analytics/:slug"
             element={
               <ProtectedRoute>
                 <Analytics />
@@ -73,7 +76,7 @@ function App() {
             }
           />
           <Route
-            path="/settings"
+            path="/dashboard/settings"
             element={
               <ProtectedRoute>
                 <Settings />
@@ -81,7 +84,7 @@ function App() {
             }
           />
           <Route
-            path="/api-keys"
+            path="/dashboard/api-keys"
             element={
               <ProtectedRoute>
                 <ApiKeys />
@@ -89,7 +92,7 @@ function App() {
             }
           />
           <Route
-            path="/credits"
+            path="/dashboard/credits"
             element={
               <ProtectedRoute>
                 <Credits />
@@ -97,7 +100,7 @@ function App() {
             }
           />
           <Route
-            path="/api-docs"
+            path="/dashboard/api-docs"
             element={
               <ApiDocs />
             }

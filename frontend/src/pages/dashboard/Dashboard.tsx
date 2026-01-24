@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { type Link as LinkType } from '../lib/api';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { Modal } from '../components/ui/Modal';
-import { QRCodeGenerator } from '../components/QRCodeGenerator';
+import { useAuth } from '../../contexts/AuthContext';
+import { type Link as LinkType } from '../../lib/api';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { Modal } from '../../components/ui/Modal';
+import { QRCodeGenerator } from '../../components/QRCodeGenerator';
 import { Plus, Search, ExternalLink, BarChart2, Trash2, Calendar, Link as LinkIcon, QrCode, Copy } from 'lucide-react';
 
 export default function Dashboard() {
@@ -221,7 +221,7 @@ export default function Dashboard() {
                     >
                       <QrCode className="w-5 h-5" />
                     </Button>
-                    <Link to={`/analytics/${link.slug}`} className="flex-1 md:flex-none">
+                    <Link to={`/dashboard/analytics/${link.slug}`} className="flex-1 md:flex-none">
                       <Button variant="secondary" className="w-full bg-white border-2 border-gray-100 hover:border-blue-200 hover:text-blue-600">
                         <BarChart2 className="w-4 h-4 mr-2" />
                         Stats

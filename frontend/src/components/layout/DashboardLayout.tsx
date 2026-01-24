@@ -26,10 +26,10 @@ interface NavCreditInfo {
 
 const NAV_ITEMS = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/api-keys', label: 'API Keys', icon: Key },
-    { path: '/credits', label: 'Credits & Usage', icon: CreditCard },
-    { path: '/api-docs', label: 'API Documentation', icon: BookOpen },
-    { path: '/settings', label: 'Settings', icon: Settings },
+    { path: '/dashboard/api-keys', label: 'API Keys', icon: Key },
+    { path: '/dashboard/credits', label: 'Credits & Usage', icon: CreditCard },
+    { path: '/dashboard/api-docs', label: 'API Documentation', icon: BookOpen },
+    { path: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function DashboardLayout() {

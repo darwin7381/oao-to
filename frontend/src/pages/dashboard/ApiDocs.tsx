@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
+import { Card, CardContent } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
 import { Copy, Check, Terminal, BookOpen, Shield, Zap, Globe, Layout, AlignLeft } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn } from '../../lib/utils';
 import { motion } from 'framer-motion';
 
 export default function ApiDocs() {
