@@ -1350,42 +1350,38 @@ const CREDIT_PACKAGES = {
 
 ---
 
-## 🚀 實施路線圖
+## 🚀 功能檢查清單
 
-### Phase 1: 核心 API 基礎設施 (Week 1-2)
+### 核心功能（已完成 ✅）
 
-- [ ] 資料庫 Schema 設計與 Migration
-- [ ] API Key 生成與驗證系統
-- [ ] Credit 扣除邏輯
-- [ ] 基礎 API 端點 (CRUD)
+- [x] 資料庫 Schema 設計與 Migration
+- [x] API Key 生成與驗證系統
+- [x] Credit 扣除邏輯（混合制）
+- [x] 基礎 API 端點 (CRUD)
+- [x] Rate Limiting 實現
+- [x] Scopes 權限系統
+- [x] 安全審計日誌
+- [x] 錯誤處理標準化
 
-### Phase 2: 安全與限流 (Week 3)
+### 管理功能（已完成 ✅）
 
-- [ ] Rate Limiting 實現
-- [ ] Scopes 權限系統
-- [ ] 安全審計日誌
-- [ ] 錯誤處理標準化
+- [x] API Key 管理介面
+- [x] Credits 查詢介面
+- [x] API 使用文檔頁面
 
-### Phase 3: 管理後台 (Week 4)
+### 待實現功能
 
-- [ ] 管理員 Dashboard API
-- [ ] 用戶 Credit 管理
-- [ ] API Key 管理介面
-- [ ] 使用統計視覺化
-
-### Phase 4: 監控與優化 (Week 5)
-
+- [ ] 管理員 Dashboard API（統計概覽）
+- [ ] 用戶 Credit 管理（充值介面）
+- [ ] 使用統計視覺化（圖表）
 - [ ] 實時監控儀表板
 - [ ] 告警系統
-- [ ] 性能優化
-- [ ] 文檔完善
-
-### Phase 5: 付費與計費 (Week 6+)
-
 - [ ] 整合 Stripe 支付
 - [ ] 訂閱管理
 - [ ] 發票生成
 - [ ] 自動續訂
+
+詳細的升級路線請參考 `API_PLATFORM_UPGRADE_PATHS.md`
 
 ---
 

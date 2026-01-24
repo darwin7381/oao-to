@@ -59,7 +59,7 @@
 2. 執行業務邏輯
 ```
 
-### 選項 1：KV Cache（推薦初期）
+### 選項 1：KV Cache ✅ **已採用**
 
 **做法**：
 - 驗證後將 API Key 資訊 cache 到 KV（5 分鐘 TTL）
@@ -122,10 +122,13 @@
 
 ---
 
-**我的建議**：
-- **初期（< 100 萬次/月）**：選項 1（KV Cache）
-- **規模化（> 100 萬次/月）**：選項 3（JWT）
-- **企業客戶**：選項 2（Durable Objects）
+**最終決策**：✅ 選項 1（KV Cache）
+
+**升級路徑**：
+- 規模化（> 100 萬次/月）：考慮選項 3（JWT）
+- 企業客戶需求：考慮選項 2（Durable Objects）
+
+詳見 `API_PLATFORM_UPGRADE_PATHS.md`
 
 ---
 
@@ -139,7 +142,7 @@ Credit 扣除在業務邏輯執行後（同步）：
 3. 返回結果
 ```
 
-### 選項 1：同步扣除（當前實現）
+### 選項 1：同步扣除 ✅ **已採用**
 
 **做法**：
 - 操作完成後立即扣除
@@ -205,15 +208,16 @@ return result;
 
 ---
 
-**我的建議**：
-- **初期**：選項 1（同步，簡單可靠）
-- **優化後**：選項 3（混合策略）
+**最終決策**：✅ 選項 1（同步扣除）
+
+**升級路徑**：
+- 付費用戶 > 100：考慮選項 3（混合策略）
 
 ---
 
 ## 方案 C：Rate Limiting 實現
 
-### 選項 1：KV 固定窗口（當前建議）
+### 選項 1：KV 固定窗口 ✅ **已採用**
 
 **做法**：
 ```javascript
@@ -262,9 +266,10 @@ return result;
 
 ---
 
-**我的建議**：
-- **初期**：選項 1（固定窗口）
-- **高級用戶需求**：選項 3（令牌桶）
+**最終決策**：✅ 選項 1（固定窗口）
+
+**升級路徑**：
+- 用戶反饋體驗差：考慮選項 3（令牌桶）
 
 ---
 
@@ -302,7 +307,7 @@ return result;
 
 ---
 
-### 選項 3：Analytics Engine（推薦）
+### 選項 3：Analytics Engine ✅ **已採用**
 
 **做法**：
 - 用 Cloudflare Analytics Engine
@@ -319,100 +324,75 @@ return result;
 
 ---
 
-**我的建議**：
-- **初期（< 10 萬次/天）**：選項 1
-- **規模化**：選項 3（Analytics Engine）
+**最終決策**：✅ 選項 3（Analytics Engine）
+
+**升級路徑**：
+- 需要歷史查詢：實現 AE + D1 聚合
 
 ---
 
 ## 總結建議
 
-### 階段 1：MVP（現在）
+### ✅ 當前實現（已完成）
 
-使用**已實現的核心**，配合：
-- API Key 驗證：**直接查 D1**（簡單）
+**技術選型**：
+- API Key 驗證：**KV Cache**（5 分鐘 TTL）
 - Credit 扣除：**同步扣除**（準確）
-- Rate Limiting：**KV 固定窗口**（夠用）
-- 統計收集：**即時寫 D1**（簡單）
+- Rate Limiting：**KV 固定窗口**（簡單可靠）
+- 統計收集：**Analytics Engine**（高頻寫入優化）
+- Credit 池：**混合池**（對外共用、對內分離）
 
-**優點**：簡單、可靠、快速上線  
-**缺點**：效能不是最優，但足夠初期使用
+**效能表現**：
+- 延遲：1-50ms（視 Cache Hit/Miss）
+- 成本：< $20/月（1000 萬次調用）
+- 可支撐：月調用量 1000 萬次
 
----
-
-### 階段 2：優化（用戶達到 1000+）
-
-逐步加入：
-- ✅ KV Cache API Key（降低延遲）
-- ✅ 異步扣除 Credit（付費用戶）
-- ✅ Analytics Engine 統計
-
-**預期改善**：
-- 延遲降低 50%
-- 成本降低 30%
-- 可支撐 100 萬次/天
+**優點**：
+- ✅ 簡單、可靠、已上線
+- ✅ 成本可控
+- ✅ 效能足夠
 
 ---
 
-### 階段 3：規模化（用戶達到 10000+）
+### 🚀 升級路徑
 
-全面升級：
-- ✅ JWT Token Exchange
-- ✅ Durable Objects Rate Limiting
-- ✅ 完整的監控和告警
+所有升級方案已詳細記錄在 `API_PLATFORM_UPGRADE_PATHS.md`
 
-**預期改善**：
-- 延遲降低 80%
-- 可支撐 1000 萬次/天
+**推薦優先級**：
+1. **P0**: Stripe 支付整合（立即需要）
+2. **P1**: Webhook 通知、SDK 生成（3-6 個月）
+3. **P2**: 技術優化（根據流量和反饋決定）
 
 ---
 
-## 🎯 立即行動項目
+## ✅ 已完成項目
 
-### 1. 執行 Migration
+### 核心功能
+- [x] 執行 Migration
+- [x] 實現 KV Cache
+- [x] 實現固定窗口 Rate Limiting
+- [x] 實現同步 Credit 扣除
+- [x] 整合 Analytics Engine
+- [x] 實現混合池 Credit 系統
+- [x] 前端管理介面
+- [x] API 使用文檔
 
-```bash
-cd api-worker
-wrangler d1 migrations apply oao-to-db --local
-```
-
-### 2. 測試 API Key 創建
-
-```bash
-# 登入後創建 API Key
-curl -X POST http://localhost:8788/api/account/keys \
-  -H "Authorization: Bearer <your-jwt-token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "My First API Key",
-    "scopes": ["links:read", "links:write"],
-    "environment": "test"
-  }'
-```
-
-### 3. 測試 Credit 查詢
-
-```bash
-curl http://localhost:8788/api/account/credits \
-  -H "Authorization: Bearer <your-jwt-token>"
-```
+### 已部署
+- [x] 生產環境部署
+- [x] Database Migration
+- [x] KV 綁定
+- [x] 所有 Secrets 配置
 
 ---
 
-## ❓ 需要你決定
+## 📚 相關文件
 
-1. **是否現在就要加入優化？**
-   - A) 先用核心版本上線，之後再優化
-   - B) 現在就加 KV Cache
+- `API_PLATFORM_DESIGN.md` - 完整設計規格
+- `API_PLATFORM_STATUS.md` - 當前狀態報告
+- `API_PLATFORM_UPGRADE_PATHS.md` - 升級路徑詳細規劃
 
-2. **Rate Limiting 嚴格度？**
-   - A) 寬鬆（固定窗口）
-   - B) 嚴格（滑動窗口）
+---
 
-3. **是否需要 Test 環境 API Key？**
-   - A) 需要（用戶可以測試不扣 Credit）
-   - B) 不需要（簡化）
-
-**請告訴我你的選擇，我將實現對應的優化方案。**
+更新時間: 2026-01-23
 
 
