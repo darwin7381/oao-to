@@ -38,7 +38,7 @@
   }
 
   .glass-card {
-    @apply bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl shadow-warm-gray/5;
+    @apply bg-white/20 backdrop-blur-xl border border-white/40 shadow-xl shadow-gray-500/5;
     backdrop-filter: saturate(180%) blur(20px);
   }
 
