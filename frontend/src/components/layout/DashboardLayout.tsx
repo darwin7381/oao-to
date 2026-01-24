@@ -13,6 +13,16 @@ import {
 import { cn } from '../../lib/utils';
 import UserMenu from '../UserMenu';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../contexts/AuthContext';
+
+interface NavCreditInfo {
+    balance: {
+        total: number;
+    };
+    plan: {
+        type: string;
+    };
+}
 
 const NAV_ITEMS = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -24,7 +34,32 @@ const NAV_ITEMS = [
 
 export default function DashboardLayout() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [creditInfo, setCreditInfo] = useState<NavCreditInfo | null>(null);
+    const { token } = useAuth();
     const location = useLocation();
+
+    const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
+
+    useEffect(() => {
+        const fetchCredits = async () => {
+            if (!token) return;
+            try {
+                const res = await fetch(`${apiUrl}/api/account/credits`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setCreditInfo(data.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch credits for nav:', error);
+            }
+        };
+
+        fetchCredits();
+    }, [token, apiUrl, location.pathname]); // Re-fetch on route change to keep updated
+
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
     // Close mobile menu on route change
     useEffect(() => {
@@ -40,19 +75,38 @@ export default function DashboardLayout() {
             </div>
 
             {/* Sidebar (Desktop) */}
-            <aside className="hidden lg:flex flex-col w-72 h-screen sticky top-0 border-r border-orange-100/50 bg-white/50 backdrop-blur-xl z-40">
-                <div className="p-6">
+            <aside
+                className={cn(
+                    "hidden lg:flex flex-col h-screen fixed left-0 top-0 border-r border-orange-100/50 bg-white/50 backdrop-blur-xl z-40 transition-all duration-300 ease-in-out",
+                    isCollapsed ? "w-20" : "w-72"
+                )}
+            >
+                {/* Collapse Toggle Button */}
+                <button
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="absolute -right-3 top-24 w-6 h-6 bg-white border border-orange-100 rounded-full flex items-center justify-center text-orange-400 hover:text-orange-600 hover:scale-110 transition-all shadow-sm z-50"
+                >
+                    <ChevronRight className={cn("w-3 h-3 transition-transform duration-300", !isCollapsed && "rotate-180")} />
+                </button>
+
+                <div className={cn("p-6 flex items-center", isCollapsed ? "justify-center" : "justify-start")}>
                     <Link to="/" className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-orange-200 group-hover:scale-105 transition-transform">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-orange-200 group-hover:scale-105 transition-transform flex-shrink-0">
                             O
                         </div>
-                        <span className="text-2xl font-black text-gray-800 tracking-tight">
-                            OAO.TO
-                        </span>
+                        {!isCollapsed && (
+                            <motion.span
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="text-2xl font-black text-gray-800 tracking-tight whitespace-nowrap"
+                            >
+                                OAO.TO
+                            </motion.span>
+                        )}
                     </Link>
                 </div>
 
-                <nav className="flex-1 px-4 py-6 space-y-1">
+                <nav className="flex-1 px-3 py-6 space-y-2">
                     {NAV_ITEMS.map((item) => {
                         const isActive = location.pathname === item.path;
                         const Icon = item.icon;
@@ -60,14 +114,16 @@ export default function DashboardLayout() {
                             <Link
                                 key={item.path}
                                 to={item.path}
+                                title={isCollapsed ? item.label : undefined}
                                 className={cn(
-                                    "flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 group relative overflow-hidden",
+                                    "flex items-center gap-3 px-3 py-3 rounded-2xl transition-all duration-200 group relative overflow-hidden",
                                     isActive
-                                        ? "text-orange-900 font-bold shadow-sm"
-                                        : "text-gray-500 hover:text-gray-900 hover:bg-white/60"
+                                        ? "text-orange-900 font-bold shadow-sm bg-orange-50/50"
+                                        : "text-gray-500 hover:text-gray-900 hover:bg-white/60",
+                                    isCollapsed && "justify-center px-0"
                                 )}
                             >
-                                {isActive && (
+                                {isActive && !isCollapsed && (
                                     <motion.div
                                         layoutId="activeNav"
                                         className="absolute inset-0 bg-orange-100/50 rounded-2xl"
@@ -75,27 +131,51 @@ export default function DashboardLayout() {
                                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                     />
                                 )}
-                                <Icon className={cn("w-5 h-5 relative z-10", isActive ? "text-orange-500" : "text-gray-400 group-hover:text-gray-600")} />
-                                <span className="relative z-10">{item.label}</span>
-                                {isActive && <ChevronRight className="w-4 h-4 ml-auto text-orange-400 relative z-10" />}
+                                <Icon className={cn("w-5 h-5 relative z-10 flex-shrink-0", isActive ? "text-orange-500" : "text-gray-400 group-hover:text-gray-600")} />
+                                {!isCollapsed && (
+                                    <span className="relative z-10 whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>
+                                )}
+                                {isActive && !isCollapsed && <ChevronRight className="w-4 h-4 ml-auto text-orange-400 relative z-10" />}
                             </Link>
                         );
                     })}
                 </nav>
 
                 <div className="p-4 border-t border-orange-100/50">
-                    <div className="bg-gradient-to-br from-orange-50 to-white p-4 rounded-2xl border border-orange-100 text-center">
-                        <div className="text-xs font-bold text-orange-400 uppercase tracking-wider mb-1">Current Plan</div>
-                        <div className="font-bold text-gray-900 mb-2">Free Starter</div>
-                        <Link to="/pricing" className="text-xs font-semibold text-orange-600 hover:underline">
-                            Upgrade Plan
-                        </Link>
-                    </div>
+                    {!isCollapsed ? (
+                        <div className="bg-gradient-to-br from-orange-50 to-white p-4 rounded-2xl border border-orange-100 text-center relative overflow-hidden group">
+                            <div className="text-xs font-bold text-orange-400 uppercase tracking-wider mb-1">
+                                {creditInfo?.plan.type ? `${creditInfo?.plan.type} Plan` : 'Loading...'}
+                            </div>
+                            <div className="font-bold text-2xl text-gray-900 mb-2">
+                                {creditInfo ? creditInfo.balance.total.toLocaleString() : '...'}
+                                <span className="text-xs font-medium text-gray-400 ml-1">credits</span>
+                            </div>
+
+                            {/* Simple Progress Bar */}
+                            <div className="h-1.5 w-full bg-orange-100 rounded-full overflow-hidden mb-3">
+                                <div className="h-full bg-orange-400 rounded-full w-3/4" />
+                            </div>
+
+                            <Link to="/pricing" className="text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline transition-colors">
+                                Upgrade Plan
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="flex justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 text-white flex items-center justify-center font-bold shadow-md cursor-pointer hover:scale-105 transition-transform" title="My Plan">
+                                {creditInfo?.plan.type ? creditInfo.plan.type.charAt(0).toUpperCase() : 'P'}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </aside>
 
             {/* Main Content Wrapper */}
-            <div className="flex-1 flex flex-col min-w-0 z-10">
+            <div className={cn(
+                "flex-1 flex flex-col min-w-0 z-10 transition-all duration-300 ease-in-out",
+                isCollapsed ? "lg:ml-20" : "lg:ml-72"
+            )}>
 
                 {/* Mobile Header */}
                 <header className="lg:hidden sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-orange-50 px-4 h-16 flex items-center justify-between">
