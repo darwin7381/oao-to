@@ -28,7 +28,7 @@ export default function Footer() {
                             <li><Link to="/" className="hover:text-orange-500 transition-colors">URL Shortener</Link></li>
                             <li><Link to="/features" className="hover:text-orange-500 transition-colors">Features</Link></li>
                             <li><Link to="/pricing" className="hover:text-orange-500 transition-colors">Pricing</Link></li>
-                            <li><Link to="/dashboard" className="hover:text-orange-500 transition-colors">Analytics</Link></li>
+                            <li><Link to="/dashboard" className="hover:text-orange-500 transition-colors">Dashboard</Link></li>
                         </ul>
                     </div>
 

@@ -19,7 +19,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.use('*', cors({
   origin: [
     'https://app.oao.to',
-    'https://63b5ef92.oao-to-app.pages.dev',  // Pages 預設網址（最新）
+    'https://44e055e8.oao-to-app.pages.dev',  // Pages 預設網址（最新）
     'http://localhost:5173',  // 本地開發
     'http://localhost:3000'
   ],

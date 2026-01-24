@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { Button } from '../components/ui/Button';
-import { Card, CardContent } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { Modal } from '../components/ui/Modal';
-import { Badge } from '../components/ui/Badge';
+import { useAuth } from '../../contexts/AuthContext';
+import { Button } from '../../components/ui/Button';
+import { Card, CardContent } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { Modal } from '../../components/ui/Modal';
+import { Badge } from '../../components/ui/Badge';
 import { Plus, Copy, Trash2, Power, Key, Shield, Calendar } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ApiKey {

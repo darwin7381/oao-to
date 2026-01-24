@@ -99,7 +99,7 @@ export default function UserMenu() {
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">API Platform</p>
               </div>
               <Link
-                to="/api-keys"
+                to="/dashboard/api-keys"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
               >
@@ -107,7 +107,7 @@ export default function UserMenu() {
                 <span>API Keys</span>
               </Link>
               <Link
-                to="/credits"
+                to="/dashboard/credits"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
               >
@@ -115,7 +115,7 @@ export default function UserMenu() {
                 <span>Credits & Usage</span>
               </Link>
               <Link
-                to="/api-docs"
+                to="/dashboard/api-docs"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors"
               >
