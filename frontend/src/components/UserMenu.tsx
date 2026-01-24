@@ -126,24 +126,20 @@ export default function UserMenu() {
               {/* Admin Links */}
               {isAdmin && (
                 <>
-                  <div className="my-1 px-3 py-1">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Admin</p>
+                  <div className="my-2 border-t border-gray-100" />
+                  <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg mx-2 mb-2">
+                    <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <User className="w-3 h-3" />
+                      Administrator
+                    </p>
                   </div>
                   <Link
                     to="/admin/users"
                     onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors font-medium"
                   >
                     <Users className="w-4 h-4" />
-                    <span>User Management</span>
-                  </Link>
-                  <Link
-                    to="/admin/stats"
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition-colors"
-                  >
-                    <BarChart3 className="w-4 h-4" />
-                    <span>System Stats</span>
+                    <span>Admin Panel</span>
                   </Link>
                 </>
               )}

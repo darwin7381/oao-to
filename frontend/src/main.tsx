@@ -22,22 +22,36 @@ import ApiDocs from './pages/dashboard/ApiDocs';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
+import AdminLayout from './components/layout/AdminLayout';
+import AdminStats from './pages/admin/Stats';
+import AdminPayments from './pages/admin/Payments';
+import AdminCreditsManagement from './pages/admin/CreditsManagement';
+import AdminSettings from './pages/admin/Settings';
 // 路由結構：
+// 公開路由：
 // / - 公開首頁（快速縮短）
 // /auth/callback - OAuth 回調
-// /dashboard - 管理儀表板（需登入）
-// /dashboard/analytics/:slug - 分析頁面（需登入）
-// /dashboard/settings - 用戶設定（需登入）
-// /dashboard/api-keys - API 金鑰管理（需登入）
-// /dashboard/credits - Credits & Usage（需登入）
-// /dashboard/api-docs - API 文件
-// /admin/users - 用戶管理（需 admin 權限）
 // /privacy - 隱私政策
 // /terms - 服務條款
 // /pricing - 價格方案
 // /features - 功能介紹
 // /support - 支援中心
-// /:slug/preview - 短網址預覽
+// 
+// Dashboard 路由（需登入）：
+// /dashboard - 管理儀表板
+// /dashboard/analytics/:slug - 分析頁面
+// /dashboard/settings - 用戶設定
+// /dashboard/api-keys - API 金鑰管理
+// /dashboard/credits - Credits & Usage
+// /dashboard/api-docs - API 文件
+// 
+// Admin 路由（需 admin 權限）：
+// /admin/users - 用戶管理
+// /admin/stats - 系統統計
+// /admin/payments - 付費管理
+// /admin/credits - Credits 管理
+// /admin/settings - 系統設定
+//
 // * - 404 錯誤頁面
 function App() {
   return (
@@ -107,15 +121,49 @@ function App() {
           />
         </Route>
 
-        {/* Admin Pages */}
-        <Route
-          path="/admin/users"
-          element={
-            <AdminRoute>
-              <AdminUsers />
-            </AdminRoute>
-          }
-        />
+        {/* Admin Pages with Admin Layout */}
+        <Route element={<AdminLayout />}>
+          <Route
+            path="/admin/users"
+            element={
+              <AdminRoute>
+                <AdminUsers />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/stats"
+            element={
+              <AdminRoute>
+                <AdminStats />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/payments"
+            element={
+              <AdminRoute>
+                <AdminPayments />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/credits"
+            element={
+              <AdminRoute>
+                <AdminCreditsManagement />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <AdminRoute>
+                <AdminSettings />
+              </AdminRoute>
+            }
+          />
+        </Route>
 
         {/* 404 Page */}
         <Route path="*" element={<NotFound />} />
