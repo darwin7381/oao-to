@@ -17,8 +17,8 @@ import UserMenu from '../UserMenu';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS = [
+    { path: '/admin/stats', label: 'Overview', icon: BarChart3 },
     { path: '/admin/users', label: 'User Management', icon: Users },
-    { path: '/admin/stats', label: 'System Statistics', icon: BarChart3 },
     { path: '/admin/payments', label: 'Payment Management', icon: DollarSign },
     { path: '/admin/credits', label: 'Credits Management', icon: CreditCard },
     { path: '/admin/settings', label: 'System Settings', icon: SettingsIcon },
@@ -36,23 +36,23 @@ export default function AdminLayout() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 font-nunito flex">
-            {/* Background Pattern - Admin Style */}
+            {/* Background Pattern - Admin Style (Blue) */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-                <div className="absolute top-[-20%] right-[-5%] w-[600px] h-[600px] bg-blue-200/30 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float" />
-                <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-200/30 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float" style={{ animationDelay: '3s' }} />
+                <div className="absolute top-[-20%] right-[-5%] w-[600px] h-[600px] bg-blue-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float" />
+                <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float" style={{ animationDelay: '3s' }} />
             </div>
 
             {/* Sidebar (Desktop) */}
             <aside
                 className={cn(
-                    "hidden lg:flex flex-col h-screen fixed left-0 top-0 border-r border-blue-200/50 bg-white/60 backdrop-blur-xl z-40 transition-all duration-300 ease-in-out",
+                    "hidden lg:flex flex-col h-screen fixed left-0 top-0 border-r border-blue-100/50 bg-white/50 backdrop-blur-xl z-40 transition-all duration-300 ease-in-out",
                     isCollapsed ? "w-20" : "w-72"
                 )}
             >
                 {/* Collapse Toggle Button */}
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="absolute -right-3 top-24 w-6 h-6 bg-white border border-blue-200 rounded-full flex items-center justify-center text-blue-500 hover:text-blue-700 hover:scale-110 transition-all shadow-sm z-50"
+                    className="absolute -right-3 top-24 w-6 h-6 bg-white border border-blue-100 rounded-full flex items-center justify-center text-blue-400 hover:text-blue-600 hover:scale-110 transition-all shadow-sm z-50"
                 >
                     <ChevronRight className={cn("w-3 h-3 transition-transform duration-300", !isCollapsed && "rotate-180")} />
                 </button>
@@ -60,7 +60,7 @@ export default function AdminLayout() {
                 {/* Admin Brand */}
                 <div className={cn("p-6 flex items-center border-b border-blue-100/50", isCollapsed ? "justify-center" : "justify-start")}>
                     <div className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-blue-300 group-hover:scale-105 transition-transform flex-shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-blue-200 group-hover:scale-105 transition-transform flex-shrink-0">
                             <Shield className="w-5 h-5" />
                         </div>
                         {!isCollapsed && (
@@ -70,10 +70,10 @@ export default function AdminLayout() {
                                 className="whitespace-nowrap"
                             >
                                 <div className="text-xl font-black text-gray-800 tracking-tight">
-                                    Admin Panel
+                                    Admin
                                 </div>
-                                <div className="text-xs text-blue-600 font-semibold">
-                                    System Management
+                                <div className="text-xs text-blue-500 font-bold uppercase tracking-wider">
+                                    Control Panel
                                 </div>
                             </motion.div>
                         )}
@@ -85,13 +85,13 @@ export default function AdminLayout() {
                     <Link
                         to="/dashboard"
                         className={cn(
-                            "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group text-gray-600 hover:text-blue-600 hover:bg-blue-50",
+                            "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group text-gray-500 hover:text-blue-600 hover:bg-blue-50/50",
                             isCollapsed && "justify-center px-0"
                         )}
                         title={isCollapsed ? "Back to Dashboard" : undefined}
                     >
                         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                        {!isCollapsed && <span className="text-sm font-semibold">Back to Dashboard</span>}
+                        {!isCollapsed && <span className="text-sm font-bold">Back to Dashboard</span>}
                     </Link>
                 </div>
 
@@ -106,26 +106,26 @@ export default function AdminLayout() {
                                 to={item.path}
                                 title={isCollapsed ? item.label : undefined}
                                 className={cn(
-                                    "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative overflow-hidden",
+                                    "flex items-center gap-3 px-3 py-3 rounded-2xl transition-all duration-200 group relative overflow-hidden",
                                     isActive
-                                        ? "text-blue-900 font-bold shadow-sm bg-blue-100/60 border border-blue-200/50"
-                                        : "text-gray-600 hover:text-gray-900 hover:bg-white/80",
+                                        ? "text-blue-900 font-bold shadow-sm bg-blue-50/50"
+                                        : "text-gray-500 hover:text-gray-900 hover:bg-white/60",
                                     isCollapsed && "justify-center px-0"
                                 )}
                             >
                                 {isActive && !isCollapsed && (
                                     <motion.div
                                         layoutId="activeAdminNav"
-                                        className="absolute inset-0 bg-blue-50 rounded-xl border border-blue-200/50"
+                                        className="absolute inset-0 bg-blue-100/50 rounded-2xl"
                                         initial={false}
                                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                     />
                                 )}
-                                <Icon className={cn("w-5 h-5 relative z-10 flex-shrink-0", isActive ? "text-blue-600" : "text-gray-500 group-hover:text-gray-700")} />
+                                <Icon className={cn("w-5 h-5 relative z-10 flex-shrink-0", isActive ? "text-blue-500" : "text-gray-400 group-hover:text-gray-600")} />
                                 {!isCollapsed && (
                                     <span className="relative z-10 whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>
                                 )}
-                                {isActive && !isCollapsed && <ChevronRight className="w-4 h-4 ml-auto text-blue-500 relative z-10" />}
+                                {isActive && !isCollapsed && <ChevronRight className="w-4 h-4 ml-auto text-blue-400 relative z-10" />}
                             </Link>
                         );
                     })}
@@ -134,15 +134,19 @@ export default function AdminLayout() {
                 {/* Admin Badge */}
                 <div className="p-4 border-t border-blue-100/50">
                     {!isCollapsed ? (
-                        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-xl text-white text-center relative overflow-hidden">
-                            <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
-                            <Shield className="w-8 h-8 mx-auto mb-2 relative z-10" />
-                            <div className="text-xs font-bold uppercase tracking-wider mb-1 relative z-10">Administrator</div>
-                            <div className="text-xs opacity-90 relative z-10">Full System Access</div>
+                        <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-2xl border border-blue-100 text-center relative overflow-hidden group">
+                            <Shield className="w-6 h-6 mx-auto mb-2 text-blue-500" />
+                            <div className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">
+                                System Status
+                            </div>
+                            <div className="font-bold text-sm text-gray-900 flex items-center justify-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                Operational
+                            </div>
                         </div>
                     ) : (
                         <div className="flex justify-center">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-md">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 text-white flex items-center justify-center shadow-md" title="System Status: Operational">
                                 <Shield className="w-5 h-5" />
                             </div>
                         </div>
@@ -169,11 +173,9 @@ export default function AdminLayout() {
                 </header>
 
                 {/* Desktop Header */}
-                <header className="hidden lg:flex h-20 items-center justify-between px-8 sticky top-0 z-30 bg-white/40 backdrop-blur-md border-b border-blue-100/50">
+                <header className="hidden lg:flex h-20 items-center justify-between px-8 sticky top-0 z-30">
                     <div className="flex items-center gap-3">
-                        <div className="px-4 py-2 bg-blue-100/60 border border-blue-200/50 rounded-full">
-                            <span className="text-sm font-bold text-blue-700">🛡️ Administrator Mode</span>
-                        </div>
+                        {/* Breadcrumbs or additional header content could go here */}
                     </div>
                     <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md px-2 py-1.5 rounded-full border border-white/50 shadow-sm">
                         <UserMenu />

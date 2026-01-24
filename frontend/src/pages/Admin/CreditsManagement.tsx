@@ -11,9 +11,9 @@ import {
     Minus,
     Search,
     TrendingUp,
-    TrendingDown,
     RefreshCw,
-    AlertCircle
+    AlertCircle,
+    Wallet
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
@@ -183,63 +183,52 @@ export default function AdminCreditsManagement() {
         <div className="space-y-8">
             {/* Page Header */}
             <div>
-                <h1 className="text-4xl font-black text-gray-900 mb-3">Credits Management</h1>
-                <p className="text-lg text-gray-600 font-medium">
+                <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">Credits Management</h1>
+                <div className="h-1.5 w-24 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full mb-4" />
+                <p className="text-lg text-gray-500 font-medium">
                     Monitor and manually adjust user credit balances
                 </p>
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0">
-                    <CardContent className="p-6">
-                        <div className="flex items-center gap-3 mb-2">
-                            <CreditCard className="w-6 h-6 opacity-80" />
-                            <span className="text-sm opacity-90 font-semibold">Total Credits</span>
-                        </div>
-                        <div className="text-3xl font-black">
-                            {totalCredits.toLocaleString()}
-                        </div>
-                        <div className="text-xs opacity-75 mt-1">
-                            Across all users
-                        </div>
-                    </CardContent>
-                </Card>
+                <StatsCard
+                    title="Total Credits"
+                    value={totalCredits.toLocaleString()}
+                    subtext="System Wide"
+                    icon={Wallet}
+                    color="purple"
+                    delay={0.1}
+                />
 
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-gray-600 font-semibold">Active Users</span>
-                            <TrendingUp className="w-5 h-5 text-green-500" />
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900">
-                            {displayUsers.length}
-                        </div>
-                    </CardContent>
-                </Card>
+                <StatsCard
+                    title="Active Credit Users"
+                    value={displayUsers.length.toString()}
+                    subtext="Users with balance"
+                    icon={TrendingUp}
+                    color="green"
+                    delay={0.2}
+                />
 
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-gray-600 font-semibold">Recent Adjustments</span>
-                            <RefreshCw className="w-5 h-5 text-blue-500" />
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900">
-                            {displayTransactions.filter(t => t.admin_id).length}
-                        </div>
-                    </CardContent>
-                </Card>
+                <StatsCard
+                    title="Recent Adjustments"
+                    value={displayTransactions.filter(t => t.admin_id).length.toString()}
+                    subtext="Admin actions"
+                    icon={RefreshCw}
+                    color="blue"
+                    delay={0.3}
+                />
             </div>
 
             {/* Search */}
-            <Card>
+            <Card className="border-0 shadow-xl shadow-blue-100/50 rounded-3xl overflow-hidden">
                 <CardContent className="p-6">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Search users by email or name..."
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 font-medium outline-none transition-all"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -248,72 +237,58 @@ export default function AdminCreditsManagement() {
             </Card>
 
             {/* Users Table */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <CreditCard className="w-5 h-5 text-purple-500" />
-                            User Credits ({filteredUsers.length})
-                        </div>
+            <Card className="border-0 shadow-xl shadow-blue-100/50 rounded-3xl overflow-hidden">
+                <CardHeader className="bg-white/50 border-b border-blue-50 pb-4">
+                    <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 text-blue-500" />
+                        User Credits ({filteredUsers.length})
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-200">
+                            <thead className="bg-gray-50/50 border-b border-gray-100">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                        User
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                        Plan
-                                    </th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                        Total Credits
-                                    </th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                        Subscription
-                                    </th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                        Purchased
-                                    </th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
-                                        Actions
-                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Plan</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Total</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Subscription</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Purchased</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody className="divide-y divide-gray-100">
                                 {filteredUsers.map((user, index) => (
                                     <motion.tr
                                         key={user.user_id}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={{ delay: index * 0.05 }}
-                                        className="hover:bg-gray-50 transition-colors"
+                                        className="hover:bg-blue-50/30 transition-colors"
                                     >
                                         <td className="px-6 py-4">
                                             <div>
-                                                <div className="font-semibold text-gray-900">{user.name}</div>
+                                                <div className="font-bold text-gray-900">{user.name}</div>
                                                 <div className="text-sm text-gray-500">{user.email}</div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <Badge variant="secondary" className="font-semibold">
+                                            <Badge variant="secondary" className="font-semibold bg-blue-50 text-blue-700 border-blue-100">
                                                 {user.plan}
                                             </Badge>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="font-bold text-gray-900 text-lg">
+                                            <div className="font-black text-gray-900 text-lg">
                                                 {user.total_credits.toLocaleString()}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="text-sm text-blue-600 font-semibold">
+                                            <div className="text-sm text-blue-600 font-bold">
                                                 {user.subscription_credits.toLocaleString()}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="text-sm text-green-600 font-semibold">
+                                            <div className="text-sm text-green-600 font-bold">
                                                 {user.purchased_credits.toLocaleString()}
                                             </div>
                                         </td>
@@ -321,7 +296,7 @@ export default function AdminCreditsManagement() {
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                                                colorScheme="blue"
                                                 onClick={() => {
                                                     setSelectedUser(user);
                                                     setShowAdjustModal(true);
@@ -339,8 +314,8 @@ export default function AdminCreditsManagement() {
             </Card>
 
             {/* Recent Transactions */}
-            <Card>
-                <CardHeader>
+            <Card className="border-0 shadow-xl shadow-blue-100/50 rounded-3xl overflow-hidden">
+                <CardHeader className="bg-white/50 border-b border-blue-50 pb-4">
                     <CardTitle className="flex items-center gap-2">
                         <RefreshCw className="w-5 h-5 text-blue-500" />
                         Recent Adjustments
@@ -351,24 +326,24 @@ export default function AdminCreditsManagement() {
                         {displayTransactions.slice(0, 10).map((tx) => (
                             <div
                                 key={tx.id}
-                                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                                className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200"
                             >
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-4">
                                     <div className={cn(
-                                        "w-10 h-10 rounded-full flex items-center justify-center",
+                                        "w-10 h-10 rounded-full flex items-center justify-center font-bold",
                                         tx.type === 'add' ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
                                     )}>
                                         {tx.type === 'add' ? <Plus className="w-5 h-5" /> : <Minus className="w-5 h-5" />}
                                     </div>
                                     <div>
-                                        <div className="font-semibold text-gray-900">{tx.reason}</div>
-                                        <div className="text-xs text-gray-500">
+                                        <div className="font-bold text-gray-900">{tx.reason}</div>
+                                        <div className="text-xs text-gray-500 font-medium">
                                             {new Date(tx.created_at).toLocaleString()}
                                         </div>
                                     </div>
                                 </div>
                                 <div className={cn(
-                                    "font-bold text-lg",
+                                    "font-black text-lg",
                                     tx.type === 'add' ? "text-green-600" : "text-red-600"
                                 )}>
                                     {tx.type === 'add' ? '+' : '-'}{tx.amount.toLocaleString()}
@@ -465,12 +440,14 @@ export default function AdminCreditsManagement() {
                                 variant="ghost"
                                 onClick={() => setShowAdjustModal(false)}
                                 className="flex-1"
+                                colorScheme="blue"
                             >
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleAdjustCredits}
                                 disabled={!adjustForm.amount || !adjustForm.reason}
+                                colorScheme="blue"
                                 className={cn(
                                     "flex-1",
                                     adjustForm.type === 'add' ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
@@ -483,5 +460,32 @@ export default function AdminCreditsManagement() {
                 )}
             </Modal>
         </div>
+    );
+}
+
+const StatsCard = ({ title, value, subtext, icon: Icon, color, delay }: any) => {
+    const colorStyles = {
+        blue: "bg-blue-50 text-blue-600 border-blue-100",
+        green: "bg-green-50 text-green-600 border-green-100",
+        indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+        purple: "bg-purple-50 text-purple-600 border-purple-100",
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay }}
+            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow"
+        >
+            <div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{title}</div>
+                <div className="text-3xl font-black text-gray-900 mb-1">{value}</div>
+                <div className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-full inline-block">{subtext}</div>
+            </div>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${colorStyles[color as keyof typeof colorStyles]}`}>
+                <Icon className="w-6 h-6" />
+            </div>
+        </motion.div>
     );
 }

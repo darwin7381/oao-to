@@ -10,7 +10,6 @@ import {
     XCircle,
     Clock,
     Search,
-    Filter,
     Download,
     RefreshCw
 } from 'lucide-react';
@@ -141,12 +140,13 @@ export default function AdminPayments() {
             {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-4xl font-black text-gray-900 mb-3">Payment Management</h1>
-                    <p className="text-lg text-gray-600 font-medium">
+                    <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">Payment Management</h1>
+                    <div className="h-1.5 w-24 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full mb-4" />
+                    <p className="text-lg text-gray-500 font-medium">
                         Monitor transactions, process refunds, and manage billing
                     </p>
                 </div>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button colorScheme="blue">
                     <Download className="w-4 h-4 mr-2" />
                     Export Report
                 </Button>
@@ -154,57 +154,42 @@ export default function AdminPayments() {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
-                    <CardContent className="p-6">
-                        <div className="flex items-center gap-3 mb-2">
-                            <DollarSign className="w-6 h-6 opacity-80" />
-                            <span className="text-sm opacity-90 font-semibold">Total Revenue</span>
-                        </div>
-                        <div className="text-3xl font-black">
-                            ${totalRevenue.toFixed(2)}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-gray-600 font-semibold">Completed</span>
-                            <CheckCircle className="w-5 h-5 text-green-500" />
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900">
-                            {displayPayments.filter(p => p.status === 'completed').length}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-gray-600 font-semibold">Pending</span>
-                            <Clock className="w-5 h-5 text-yellow-500" />
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900">
-                            {displayPayments.filter(p => p.status === 'pending').length}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-gray-600 font-semibold">Failed</span>
-                            <XCircle className="w-5 h-5 text-red-500" />
-                        </div>
-                        <div className="text-2xl font-bold text-gray-900">
-                            {displayPayments.filter(p => p.status === 'failed').length}
-                        </div>
-                    </CardContent>
-                </Card>
+                <StatsCard
+                    title="Total Revenue"
+                    value={`$${totalRevenue.toFixed(2)}`}
+                    subtext="Lifetime earnings"
+                    icon={DollarSign}
+                    color="green"
+                    delay={0.1}
+                />
+                <StatsCard
+                    title="Completed"
+                    value={displayPayments.filter(p => p.status === 'completed').length.toString()}
+                    subtext="Transactions"
+                    icon={CheckCircle}
+                    color="blue"
+                    delay={0.2}
+                />
+                <StatsCard
+                    title="Pending"
+                    value={displayPayments.filter(p => p.status === 'pending').length.toString()}
+                    subtext="Awaiting processing"
+                    icon={Clock}
+                    color="yellow"
+                    delay={0.3}
+                />
+                <StatsCard
+                    title="Failed"
+                    value={displayPayments.filter(p => p.status === 'failed').length.toString()}
+                    subtext="Action required"
+                    icon={XCircle}
+                    color="red"
+                    delay={0.4}
+                />
             </div>
 
             {/* Filters */}
-            <Card>
+            <Card className="border-0 shadow-xl shadow-blue-100/50 rounded-3xl overflow-hidden">
                 <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row gap-4">
                         <div className="flex-1 relative">
@@ -212,21 +197,21 @@ export default function AdminPayments() {
                             <input
                                 type="text"
                                 placeholder="Search by email..."
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 bg-gray-50 p-1 rounded-xl">
                             {(['all', 'completed', 'pending', 'failed', 'refunded'] as const).map((status) => (
                                 <button
                                     key={status}
                                     onClick={() => setFilter(status)}
                                     className={cn(
-                                        'px-4 py-2 rounded-xl font-semibold text-sm transition-all',
+                                        'px-4 py-2 rounded-lg font-bold text-xs transition-all',
                                         filter === status
-                                            ? 'bg-blue-600 text-white shadow-lg'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
+                                            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                                     )}
                                 >
                                     {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -238,8 +223,8 @@ export default function AdminPayments() {
             </Card>
 
             {/* Payments Table */}
-            <Card>
-                <CardHeader>
+            <Card className="border-0 shadow-xl shadow-blue-100/50 rounded-3xl overflow-hidden">
+                <CardHeader className="bg-white/50 border-b border-blue-50 pb-4">
                     <CardTitle className="flex items-center gap-2">
                         <CreditCard className="w-5 h-5 text-blue-500" />
                         Recent Transactions ({filteredPayments.length})
@@ -248,68 +233,71 @@ export default function AdminPayments() {
                 <CardContent className="p-0">
                     {filteredPayments.length === 0 ? (
                         <div className="text-center py-12 text-gray-500">
-                            <CreditCard className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                            <p>No payments found matching your filters</p>
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+                                <CreditCard className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900">No payments found</h3>
+                            <p className="text-gray-500">Try adjusting your filters.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50 border-b border-gray-200">
+                                <thead className="bg-gray-50/50 border-b border-gray-100">
                                     <tr>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                             User
                                         </th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                             Plan
                                         </th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                             Amount
                                         </th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                             Credits
                                         </th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                             Status
                                         </th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                             Date
                                         </th>
-                                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">
                                             Actions
                                         </th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
+                                <tbody className="divide-y divide-gray-100">
                                     {filteredPayments.map((payment, index) => (
                                         <motion.tr
                                             key={payment.id}
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             transition={{ delay: index * 0.05 }}
-                                            className="hover:bg-gray-50 transition-colors"
+                                            className="hover:bg-blue-50/30 transition-colors"
                                         >
                                             <td className="px-6 py-4">
                                                 <div>
-                                                    <div className="font-semibold text-gray-900">
+                                                    <div className="font-bold text-gray-900">
                                                         {payment.user_email}
                                                     </div>
-                                                    <div className="text-xs text-gray-500">
+                                                    <div className="text-xs text-gray-500 font-medium">
                                                         ID: {payment.user_id}
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <Badge variant="secondary" className="font-semibold">
+                                                <Badge variant="secondary" className="font-semibold bg-gray-100 text-gray-700 border-gray-200">
                                                     {payment.plan}
                                                 </Badge>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-gray-900">
+                                                <div className="font-black text-gray-900">
                                                     ${payment.amount.toFixed(2)}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="text-sm font-semibold text-blue-600">
+                                                <div className="text-sm font-bold text-blue-600">
                                                     +{payment.credits.toLocaleString()}
                                                 </div>
                                             </td>
@@ -317,14 +305,15 @@ export default function AdminPayments() {
                                                 {getStatusBadge(payment.status)}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="text-sm text-gray-600">
-                                                    {new Date(payment.created_at).toLocaleString()}
+                                                <div className="text-sm text-gray-600 font-medium">
+                                                    {new Date(payment.created_at).toLocaleDateString()}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
+                                                    colorScheme="blue"
                                                     className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                                 >
                                                     View Details
@@ -339,5 +328,32 @@ export default function AdminPayments() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+const StatsCard = ({ title, value, subtext, icon: Icon, color, delay }: any) => {
+    const colorStyles = {
+        blue: "bg-blue-50 text-blue-600 border-blue-100",
+        green: "bg-green-50 text-green-600 border-green-100",
+        yellow: "bg-yellow-50 text-yellow-600 border-yellow-100",
+        red: "bg-red-50 text-red-600 border-red-100",
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay }}
+            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow"
+        >
+            <div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">{title}</div>
+                <div className="text-3xl font-black text-gray-900 mb-1">{value}</div>
+                <div className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-full inline-block">{subtext}</div>
+            </div>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${colorStyles[color as keyof typeof colorStyles]}`}>
+                <Icon className="w-6 h-6" />
+            </div>
+        </motion.div>
     );
 }
