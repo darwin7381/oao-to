@@ -141,33 +141,32 @@ export default function Credits() {
           transition={{ delay: 0.1 }}
           className="md:col-span-2 lg:col-span-2"
         >
-          <Card className="h-full bg-gradient-to-br from-orange-400 to-pink-500 text-white border-0 shadow-xl overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-3 opacity-10">
+          <div className="h-full rounded-xl shadow-xl overflow-hidden relative bg-gradient-to-br from-orange-400 to-pink-500 text-white p-8 flex flex-col justify-between">
+            <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
               <Sparkles className="w-40 h-40 transform rotate-12" />
             </div>
-            <CardContent className="p-8 relative z-10 flex flex-col justify-between h-full">
-              <div>
-                <div className="flex items-center gap-2 mb-4 text-orange-50">
-                  <Wallet className="w-5 h-5" />
-                  <span className="font-semibold uppercase tracking-wider text-sm">Total Balance</span>
-                </div>
-                <div className="text-6xl font-black mb-2 tracking-tight">
-                  {creditInfo.balance.total.toLocaleString()}
-                </div>
-                <div className="flex gap-4 text-sm font-medium text-orange-50">
-                  <span>Sub: {creditInfo.balance.subscription.toLocaleString()}</span>
-                  <span className="w-px h-4 bg-white/20"></span>
-                  <span>Purchased: {creditInfo.balance.purchased.toLocaleString()}</span>
-                </div>
-              </div>
 
-              <div className="mt-8 pt-6 border-t border-white/20">
-                <Button variant="secondary" className="bg-white/90 text-orange-600 hover:bg-white border-0 shadow-lg" onClick={() => window.location.href = '/pricing'}>
-                  Top Up Credits
-                </Button>
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-4 text-orange-50">
+                <Wallet className="w-5 h-5" />
+                <span className="font-semibold uppercase tracking-wider text-sm">Total Balance</span>
               </div>
-            </CardContent>
-          </Card>
+              <div className="text-6xl font-black mb-2 tracking-tight">
+                {creditInfo.balance.total.toLocaleString()}
+              </div>
+              <div className="flex gap-4 text-sm font-medium text-orange-50">
+                <span>Sub: {creditInfo.balance.subscription.toLocaleString()}</span>
+                <span className="w-px h-4 bg-white/20"></span>
+                <span>Purchased: {creditInfo.balance.purchased.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="relative z-10 mt-8 pt-6 border-t border-white/20">
+              <Button variant="secondary" className="bg-white/90 text-orange-600 hover:bg-white border-0 shadow-lg" onClick={() => window.location.href = '/pricing'}>
+                Top Up Credits
+              </Button>
+            </div>
+          </div>
         </motion.div>
 
         {/* Current Plan */}
@@ -252,20 +251,20 @@ export default function Credits() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Col: Additional Stats */}
         <div className="space-y-6">
-          <Card className="bg-gradient-to-br from-gray-900 to-gray-800 text-white border-0">
+          <Card>
             <CardContent className="p-6">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
                 <Zap className="w-5 h-5 text-yellow-400" />
                 Lifetime Stats
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                <div className="p-4 rounded-xl bg-white/10 backdrop-blur-sm">
-                  <div className="text-sm text-gray-400 mb-1">Total Purchased</div>
-                  <div className="text-2xl font-bold">{creditInfo.statistics.totalPurchased.toLocaleString()}</div>
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                  <div className="text-sm text-gray-500 mb-1">Total Purchased</div>
+                  <div className="text-2xl font-bold text-gray-900">{creditInfo.statistics.totalPurchased.toLocaleString()}</div>
                 </div>
-                <div className="p-4 rounded-xl bg-white/10 backdrop-blur-sm">
-                  <div className="text-sm text-gray-400 mb-1">Total Consumed</div>
-                  <div className="text-2xl font-bold">{creditInfo.statistics.totalUsed.toLocaleString()}</div>
+                <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
+                  <div className="text-sm text-gray-500 mb-1">Total Consumed</div>
+                  <div className="text-2xl font-bold text-gray-900">{creditInfo.statistics.totalUsed.toLocaleString()}</div>
                 </div>
               </div>
             </CardContent>
@@ -347,6 +346,6 @@ export default function Credits() {
           </Card>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
