@@ -1,8 +1,53 @@
-# API 平台當前狀態
+# API 平台與 Admin Portal 完整狀態
 
-**更新日期**: 2026-01-23  
-**版本**: V1.0  
-**狀態**: ✅ 核心功能已完成並部署
+**更新日期**: 2026-01-24  
+**版本**: V1.1 (Admin Portal 完成)  
+**狀態**: ✅ 核心功能 + Admin Portal 已完成
+
+---
+
+## 🎉 最新完成：Admin Portal (2026-01-24)
+
+### **Admin Portal 架構**
+
+#### **前端** (8 個頁面)
+- ✅ `/admin/analytics` - 分析總覽（圖表化）
+- ✅ `/admin/links` - 連結管理（22 個真實連結）
+- ✅ `/admin/api-keys` - API Keys 監控（4 個真實 keys）
+- ✅ `/admin/users` - 用戶管理（3 個用戶）
+- ✅ `/admin/payments` - 付款管理
+- ✅ `/admin/credits` - Credits 管理（手動調整）
+- ✅ `/admin/stats` - 系統統計
+- ✅ `/admin/settings` - 系統設定
+
+#### **後端 API** (7 個 endpoints)
+- ✅ `GET /api/admin/stats` - 系統統計
+- ✅ `GET /api/admin/users` - 所有用戶
+- ✅ `GET /api/admin/links` - 所有連結（從 KV + AE）
+- ✅ `GET /api/admin/api-keys` - 所有 API Keys
+- ✅ `GET /api/admin/analytics` - 全站分析
+- ✅ `GET /api/admin/payments` - 付款記錄
+- ✅ `GET /api/admin/credits/users` - 所有用戶 Credits
+- ✅ `POST /api/admin/credits/adjust` - 手動調整 Credits
+- ✅ `DELETE /api/admin/links/:slug` - 刪除連結
+- ✅ `POST /api/admin/links/:slug/flag` - 標記/禁用連結
+- ✅ `POST /api/admin/api-keys/:keyId/revoke` - 撤銷 API Key
+
+#### **數據庫** (新增)
+- ✅ `payments` 表 - 付款記錄
+- ✅ `credit_transactions.admin_id` - Admin 操作追蹤
+
+#### **架構文檔** (新增)
+- ✅ `ADMIN_PORTAL_ARCHITECTURE.md` - 完整架構規格
+- ✅ `KV_D1_DUAL_WRITE_STRATEGY.md` - 雙寫策略分析
+
+#### **測試狀態**
+```
+✅ 所有 7 個 Admin API endpoints 測試通過
+✅ 真實數據驗證：22 links, 4 API keys, 3 users, 300 credits
+✅ 權限控制正確（requireAdmin middleware）
+✅ 從正確的數據來源讀取（KV + D1 + Analytics Engine）
+```
 
 ---
 
@@ -218,15 +263,23 @@ Credit 扣除:
 - `API_PLATFORM_DESIGN.md` - 完整設計規格
 - `API_OPTIMIZATION_OPTIONS.md` - 優化方案分析
 - `API_PLATFORM_UPGRADE_PATHS.md` - 升級路線圖
+- `ADMIN_PORTAL_ARCHITECTURE.md` - 🆕 Admin Portal 架構
+- `KV_D1_DUAL_WRITE_STRATEGY.md` - 🆕 雙寫策略分析
 
-### 代碼文件
+### API Platform 代碼
 - `api-worker/migrations/0003_api_platform_core.sql` - 資料庫結構
 - `api-worker/src/routes/api-keys.ts` - API Key 路由
 - `api-worker/src/routes/account.ts` - Credits 路由
 - `api-worker/src/routes/v1-links.ts` - V1 Public API
-- `frontend/src/pages/ApiKeys.tsx` - API Keys 管理頁面
-- `frontend/src/pages/Credits.tsx` - Credits 查詢頁面
-- `frontend/src/pages/ApiDocs.tsx` - API 文檔頁面
+- `frontend/src/pages/dashboard/ApiKeys.tsx` - API Keys 管理頁面
+- `frontend/src/pages/dashboard/Credits.tsx` - Credits 查詢頁面
+- `frontend/src/pages/dashboard/ApiDocs.tsx` - API 文檔頁面
+
+### Admin Portal 代碼 🆕
+- `api-worker/migrations/0004_admin_features.sql` - Admin 功能擴展
+- `api-worker/src/routes/admin.ts` - Admin API 路由（11 個 endpoints）
+- `frontend/src/components/layout/AdminLayout.tsx` - Admin 專屬佈局
+- `frontend/src/pages/admin/*.tsx` - 8 個 Admin 頁面
 
 ---
 
@@ -250,27 +303,32 @@ Credit 扣除:
 
 ## ⏭️ 待實現功能
 
-以下功能已設計但尚未實現，詳見 `API_PLATFORM_UPGRADE_PATHS.md`：
+### **Admin Portal 進階功能** (可選)
+- ⏸ 批量操作（批量刪除、批量禁用）
+- ⏸ 高級搜尋/過濾
+- ⏸ 匯出報表（CSV/Excel）
+- ⏸ Audit Logs UI（操作歷史查詢）
+- ⏸ 系統監控 Dashboard（Realtime）
+- ⏸ Email 模板管理
+- ⏸ Feature Flags 管理
 
-### 短期（可選）
+### **API Platform 擴展** (用戶需求)
 - ⏸ 批量創建 API（`POST /v1/links/batch`）
 - ⏸ 更新短網址 API（`PUT /v1/links/:slug`）
 - ⏸ 刪除短網址 API（`DELETE /v1/links/:slug`）
 - ⏸ 詳細分析 API（`GET /v1/analytics/:slug`）
-
-### 中期（用戶需求）
 - ⏸ Webhook 通知
 - ⏸ Stripe 支付整合
 - ⏸ 訂閱管理介面
-- ⏸ 使用統計圖表
 
-### 長期（規模化）
+### **規模化優化** (長期)
 - ⏸ 自訂域名
 - ⏸ 白標服務
 - ⏸ SDK（Python, Node.js, PHP）
 - ⏸ OpenAPI/Swagger 規格
 - ⏸ 令牌桶 Rate Limiting
 - ⏸ 異步 Credit 扣除
+- ⏸ Cron 定期數據同步
 
 ---
 

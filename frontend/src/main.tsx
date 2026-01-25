@@ -27,6 +27,9 @@ import AdminStats from './pages/admin/Stats';
 import AdminPayments from './pages/admin/Payments';
 import AdminCreditsManagement from './pages/admin/CreditsManagement';
 import AdminSettings from './pages/admin/Settings';
+import AdminLinks from './pages/admin/Links';
+import AdminApiKeysMonitoring from './pages/admin/ApiKeysMonitoring';
+import AdminAnalytics from './pages/admin/Analytics';
 // 路由結構：
 // 公開路由：
 // / - 公開首頁（快速縮短）
@@ -46,10 +49,13 @@ import AdminSettings from './pages/admin/Settings';
 // /dashboard/api-docs - API 文件
 // 
 // Admin 路由（需 admin 權限）：
+// /admin/analytics - 分析總覽
+// /admin/links - 連結管理
+// /admin/api-keys - API 金鑰監控
 // /admin/users - 用戶管理
-// /admin/stats - 系統統計
 // /admin/payments - 付費管理
 // /admin/credits - Credits 管理
+// /admin/stats - 系統統計
 // /admin/settings - 系統設定
 //
 // * - 404 錯誤頁面
@@ -124,18 +130,34 @@ function App() {
         {/* Admin Pages with Admin Layout */}
         <Route element={<AdminLayout />}>
           <Route
-            path="/admin/users"
+            path="/admin/analytics"
             element={
               <AdminRoute>
-                <AdminUsers />
+                <AdminAnalytics />
               </AdminRoute>
             }
           />
           <Route
-            path="/admin/stats"
+            path="/admin/links"
             element={
               <AdminRoute>
-                <AdminStats />
+                <AdminLinks />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/api-keys"
+            element={
+              <AdminRoute>
+                <AdminApiKeysMonitoring />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <AdminRoute>
+                <AdminUsers />
               </AdminRoute>
             }
           />
@@ -152,6 +174,14 @@ function App() {
             element={
               <AdminRoute>
                 <AdminCreditsManagement />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/stats"
+            element={
+              <AdminRoute>
+                <AdminStats />
               </AdminRoute>
             }
           />

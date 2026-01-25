@@ -27,10 +27,18 @@ export interface LinkData {
   title?: string;
   description?: string;
   image?: string;
+  customTitle?: string;
+  customDescription?: string;
+  customImage?: string;
   
-  // 其他設定
+  // 設定
   tags?: string[];
   isActive?: boolean;
+  
+  // Admin 管理欄位（只有 Admin 可以設置）
+  flagReason?: string;
+  flaggedAt?: number;
+  flaggedBy?: string;  // Admin user ID
 }
 
 export type UserRole = 'user' | 'admin' | 'superadmin';

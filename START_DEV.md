@@ -1,5 +1,32 @@
 # OAO.TO 開發環境啟動指南
 
+## ⚠️ 重要警告：D1 Migration 路徑問題
+
+**如果你要執行 D1 migrations，必須使用與 wrangler dev 相同的 --persist-to 路徑！**
+
+```bash
+# ❌ 錯誤（會創建不同的數據庫）
+wrangler d1 migrations apply oao-to-db --local
+
+# ✅ 正確（使用共享路徑）
+cd api-worker
+wrangler d1 migrations apply oao-to-db --local --persist-to ../.wrangler/oao-shared
+```
+
+**為什麼？**
+- Worker 使用 `--persist-to ../.wrangler/oao-shared`
+- Migration 不加參數會使用預設的 `.wrangler/state`
+- **兩個不同的 SQLite 文件！**
+
+**症狀**：
+- Migration 成功，但 API 報錯 "no such table"
+- wrangler d1 execute 看到表存在，但 Worker 看不到
+- 數據不一致，難以 debug
+
+**教訓**：2026-01-24 實際遇到此問題，導致開發和測試嚴重誤導
+
+---
+
 ## 🚀 標準啟動流程（--persist-to 方案）
 
 ### **Terminal 1: Core Worker**

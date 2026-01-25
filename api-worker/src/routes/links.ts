@@ -139,6 +139,19 @@ links.put('/:slug', async (c) => {
     // 寫回 KV
     await c.env.LINKS.put(`link:${slug}`, JSON.stringify(updatedData));
 
+    // 同步更新 D1（基本欄位）
+    await c.env.DB.prepare(
+      `UPDATE links 
+       SET title = ?, updated_at = ?, expires_at = ?, password = ?
+       WHERE slug = ?`
+    ).bind(
+      updatedData.title || null,
+      updatedData.updatedAt || null,
+      updatedData.expiresAt || null,
+      updatedData.password || null,
+      slug
+    ).run();
+
     // 清除快取
     const cache = caches.default;
     c.executionCtx.waitUntil(
@@ -185,6 +198,17 @@ links.post('/:slug/refetch', async (c) => {
 
     // 寫回 KV
     await c.env.LINKS.put(`link:${slug}`, JSON.stringify(updatedData));
+
+    // 同步更新 D1
+    await c.env.DB.prepare(
+      `UPDATE links 
+       SET title = ?, updated_at = ?
+       WHERE slug = ?`
+    ).bind(
+      updatedData.title || null,
+      updatedData.updatedAt || null,
+      slug
+    ).run();
 
     // 清除快取
     const cache = caches.default;

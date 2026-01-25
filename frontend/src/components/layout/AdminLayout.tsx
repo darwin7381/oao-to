@@ -10,18 +10,24 @@ import {
     X,
     ChevronRight,
     ArrowLeft,
-    Shield
+    Shield,
+    Link as LinkIcon,
+    Key,
+    TrendingUp
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import UserMenu from '../UserMenu';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS = [
-    { path: '/admin/stats', label: 'Overview', icon: BarChart3 },
-    { path: '/admin/users', label: 'User Management', icon: Users },
-    { path: '/admin/payments', label: 'Payment Management', icon: DollarSign },
-    { path: '/admin/credits', label: 'Credits Management', icon: CreditCard },
-    { path: '/admin/settings', label: 'System Settings', icon: SettingsIcon },
+    { path: '/admin/analytics', label: 'Analytics', icon: TrendingUp },
+    { path: '/admin/links', label: 'Links', icon: LinkIcon },
+    { path: '/admin/api-keys', label: 'API Keys', icon: Key },
+    { path: '/admin/users', label: 'Users', icon: Users },
+    { path: '/admin/payments', label: 'Payments', icon: DollarSign },
+    { path: '/admin/credits', label: 'Credits', icon: CreditCard },
+    { path: '/admin/stats', label: 'Stats', icon: BarChart3 },
+    { path: '/admin/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
 export default function AdminLayout() {
