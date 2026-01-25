@@ -53,17 +53,25 @@ export default function AdminStats() {
 
     useEffect(() => {
         const fetchStats = async () => {
+            if (!token) {
+                setLoading(false);
+                return;
+            }
+
+            setLoading(true);
             try {
-                const res = await fetch(`${apiUrl}/admin/stats`, {
+                const res = await fetch(`${apiUrl}/api/admin/stats`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (res.ok) {
                     const data = await res.json();
                     setStats(data.data);
+                } else {
+                    console.warn('API not ready, using mock data');
                 }
             } catch (error) {
-                console.error('Failed to load stats:', error);
+                console.warn('Failed to load stats, using mock data:', error);
             } finally {
                 setLoading(false);
             }

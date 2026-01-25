@@ -57,15 +57,21 @@ export default function AdminCreditsManagement() {
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [token, apiUrl]);
 
     const loadData = async () => {
+        if (!token) {
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
         try {
             const [usersRes, txRes] = await Promise.all([
-                fetch(`${apiUrl}/admin/credits/users`, {
+                fetch(`${apiUrl}/api/admin/credits/users`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`${apiUrl}/admin/credits/transactions?limit=50`, {
+                fetch(`${apiUrl}/api/admin/credits/transactions?limit=50`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
@@ -73,71 +79,31 @@ export default function AdminCreditsManagement() {
             if (usersRes.ok) {
                 const data = await usersRes.json();
                 setUsers(data.data.users);
+            } else {
+                console.warn('Users API not ready, using mock data');
             }
 
             if (txRes.ok) {
                 const data = await txRes.json();
                 setTransactions(data.data.transactions);
+            } else {
+                console.warn('Transactions API not ready, using mock data');
             }
         } catch (error) {
-            console.error('Failed to load data:', error);
+            console.warn('Failed to load data, using mock data:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    // Mock data
-    const mockUsers: UserCredit[] = [
-        {
-            user_id: 'user_1',
-            email: 'john@example.com',
-            name: 'John Doe',
-            total_credits: 5000,
-            subscription_credits: 3000,
-            purchased_credits: 2000,
-            plan: 'Pro',
-            last_transaction_at: new Date().toISOString()
-        },
-        {
-            user_id: 'user_2',
-            email: 'jane@example.com',
-            name: 'Jane Smith',
-            total_credits: 1000,
-            subscription_credits: 1000,
-            purchased_credits: 0,
-            plan: 'Starter',
-            last_transaction_at: new Date(Date.now() - 86400000).toISOString()
-        },
-    ];
-
-    const mockTransactions: Transaction[] = [
-        {
-            id: 'tx_1',
-            user_id: 'user_1',
-            type: 'add',
-            amount: 500,
-            reason: 'Customer compensation',
-            admin_id: 'admin_1',
-            created_at: new Date().toISOString()
-        },
-        {
-            id: 'tx_2',
-            user_id: 'user_2',
-            type: 'purchase',
-            amount: 1000,
-            reason: 'Starter plan purchase',
-            created_at: new Date(Date.now() - 3600000).toISOString()
-        },
-    ];
-
-    const displayUsers = users.length > 0 ? users : mockUsers;
-    const displayTransactions = transactions.length > 0 ? transactions : mockTransactions;
+    const displayUsers = users;
+    const displayTransactions = transactions;
 
     const handleAdjustCredits = async () => {
         if (!selectedUser) return;
 
         try {
-            const res = await fetch(`${apiUrl}/admin/credits/adjust`, {
+            const res = await fetch(`${apiUrl}/api/admin/credits/adjust`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

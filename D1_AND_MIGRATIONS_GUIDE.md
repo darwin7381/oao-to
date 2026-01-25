@@ -1,5 +1,54 @@
 # D1 資料庫與 Migration 完全指南
 
+## 🚨 關鍵警告：本地開發的 Migration 路徑陷阱
+
+### **問題描述**
+
+當使用 `--persist-to` 參數啟動 Worker 時，D1 migrations 也必須使用相同路徑！
+
+```bash
+# Worker 啟動
+wrangler dev --persist-to ../.wrangler/oao-shared
+
+# ❌ 錯誤的 migration
+wrangler d1 migrations apply DB --local
+→ 寫入到：.wrangler/state/（預設路徑）
+
+# ✅ 正確的 migration  
+wrangler d1 migrations apply DB --local --persist-to ../.wrangler/oao-shared
+→ 寫入到：../.wrangler/oao-shared/（Worker 使用的路徑）
+```
+
+### **實際案例（2026-01-24）**
+
+**症狀**：
+1. Migration 顯示成功 ✅
+2. `wrangler d1 execute` 查詢看到表存在 ✅
+3. 但 API 調用報錯 "no such table: payments" ❌
+4. 重啟 Worker 無效 ❌
+
+**根本原因**：
+- Migration 應用到 `.wrangler/state/` 的數據庫
+- Worker 使用 `../.wrangler/oao-shared/` 的數據庫
+- **兩個完全不同的 SQLite 文件！**
+
+**影響**：
+- 開發時間浪費數小時 debug
+- 數據狀態混亂
+- 測試結果不準確
+
+**解決方案**：
+```bash
+# 刪除錯誤的數據庫
+rm -rf api-worker/.wrangler/state
+
+# 對正確的數據庫執行 migration
+cd api-worker
+wrangler d1 migrations apply oao-to-db --local --persist-to ../.wrangler/oao-shared
+```
+
+---
+
 ## 🎯 什麼是 Cloudflare D1？
 
 ### **D1 的本質**

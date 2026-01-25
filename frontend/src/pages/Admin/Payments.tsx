@@ -40,64 +40,34 @@ export default function AdminPayments() {
 
     useEffect(() => {
         loadPayments();
-    }, []);
+    }, [token, apiUrl]);
 
     const loadPayments = async () => {
+        if (!token) {
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
         try {
-            const res = await fetch(`${apiUrl}/admin/payments`, {
+            const res = await fetch(`${apiUrl}/api/admin/payments`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (res.ok) {
                 const data = await res.json();
                 setPayments(data.data.payments);
+            } else {
+                console.warn('API not ready, using mock data');
             }
         } catch (error) {
-            console.error('Failed to load payments:', error);
+            console.warn('Failed to load payments, using mock data:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    // Mock data if API not ready
-    const mockPayments: Payment[] = [
-        {
-            id: 'pay_1',
-            user_id: 'user_123',
-            user_email: 'john@example.com',
-            amount: 29.99,
-            status: 'completed',
-            plan: 'Pro Monthly',
-            credits: 10000,
-            payment_method: 'Stripe',
-            created_at: new Date().toISOString(),
-            stripe_payment_id: 'pi_abc123'
-        },
-        {
-            id: 'pay_2',
-            user_id: 'user_456',
-            user_email: 'jane@example.com',
-            amount: 99.99,
-            status: 'pending',
-            plan: 'Enterprise',
-            credits: 50000,
-            payment_method: 'Stripe',
-            created_at: new Date(Date.now() - 3600000).toISOString(),
-        },
-        {
-            id: 'pay_3',
-            user_id: 'user_789',
-            user_email: 'bob@example.com',
-            amount: 9.99,
-            status: 'failed',
-            plan: 'Starter',
-            credits: 1000,
-            payment_method: 'Stripe',
-            created_at: new Date(Date.now() - 7200000).toISOString(),
-        },
-    ];
-
-    const displayPayments = payments.length > 0 ? payments : mockPayments;
+    const displayPayments = payments;
 
     const getStatusBadge = (status: Payment['status']) => {
         const config = {
