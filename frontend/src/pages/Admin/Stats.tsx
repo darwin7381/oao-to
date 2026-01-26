@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
+import { adminApi, type AdminStats } from '../../lib/adminApi';
 
 interface SystemStats {
     users: {
@@ -48,37 +49,33 @@ export default function AdminStats() {
     const { token } = useAuth();
     const [stats, setStats] = useState<SystemStats | null>(null);
     const [loading, setLoading] = useState(true);
-
-    const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchStats = async () => {
-            if (!token) {
-                setLoading(false);
-                return;
-            }
+        fetchStats().catch((error) => {
+            console.error('[Stats] Unhandled error:', error);
+        });
+    }, [token]);
 
-            setLoading(true);
-            try {
-                const res = await fetch(`${apiUrl}/api/admin/stats`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+    const fetchStats = async () => {
+        if (!token) {
+            setLoading(false);
+            return;
+        }
 
-                if (res.ok) {
-                    const data = await res.json();
-                    setStats(data.data);
-                } else {
-                    console.warn('API not ready, using mock data');
-                }
-            } catch (error) {
-                console.warn('Failed to load stats, using mock data:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchStats();
-    }, [apiUrl, token]);
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await adminApi.getStats();
+            // Note: API returns basic stats, may need to enhance
+            setStats(data as any);
+        } catch (err: any) {
+            console.error('Failed to load stats:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -88,38 +85,30 @@ export default function AdminStats() {
         );
     }
 
-    // Mock data if API not ready
-    const mockStats: SystemStats = {
-        users: {
-            total: 1247,
-            active: 892,
-            new_today: 23,
-            new_this_week: 156
-        },
-        links: {
-            total: 45678,
-            created_today: 234,
-            created_this_week: 1567,
-            total_clicks: 892341
-        },
-        revenue: {
-            total: 45230,
-            this_month: 12450,
-            this_week: 3210
-        },
-        credits: {
-            total_issued: 1000000,
-            total_used: 456789,
-            total_remaining: 543211
-        },
-        api: {
-            total_requests: 2345678,
-            requests_today: 12345,
-            avg_response_time: 45
-        }
-    };
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                <div className="text-red-500 text-xl mb-4">載入失敗</div>
+                <div className="text-gray-600 mb-4">{error}</div>
+                <button 
+                    onClick={() => fetchStats()} 
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                    重試
+                </button>
+            </div>
+        );
+    }
 
-    const displayStats = stats || mockStats;
+    if (!stats) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-gray-500">無數據</div>
+            </div>
+        );
+    }
+
+    const displayStats = stats;
 
     const StatsCard = ({ title, value, subtext, icon: Icon, colorClass, delay }: any) => (
         <motion.div

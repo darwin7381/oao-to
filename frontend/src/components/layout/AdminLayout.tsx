@@ -18,15 +18,18 @@ import {
 import { cn } from '../../lib/utils';
 import UserMenu from '../UserMenu';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Headphones, FileText } from 'lucide-react';
 
 const NAV_ITEMS = [
     { path: '/admin/analytics', label: 'Analytics', icon: TrendingUp },
     { path: '/admin/links', label: 'Links', icon: LinkIcon },
     { path: '/admin/api-keys', label: 'API Keys', icon: Key },
     { path: '/admin/users', label: 'Users', icon: Users },
+    { path: '/admin/support', label: 'Support', icon: Headphones },
     { path: '/admin/payments', label: 'Payments', icon: DollarSign },
     { path: '/admin/credits', label: 'Credits', icon: CreditCard },
-    { path: '/admin/stats', label: 'Stats', icon: BarChart3 },
+    { path: '/admin/plans', label: 'Plans', icon: FileText },
+    { path: '/admin/audit-logs', label: 'Audit Logs', icon: BarChart3 },
     { path: '/admin/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
@@ -63,11 +66,11 @@ export default function AdminLayout() {
                     <ChevronRight className={cn("w-3 h-3 transition-transform duration-300", !isCollapsed && "rotate-180")} />
                 </button>
 
-                {/* Admin Brand */}
+                {/* Logo - OAO.TO */}
                 <div className={cn("p-6 flex items-center border-b border-blue-100/50", isCollapsed ? "justify-center" : "justify-start")}>
-                    <div className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-blue-200 group-hover:scale-105 transition-transform flex-shrink-0">
-                            <Shield className="w-5 h-5" />
+                    <Link to="/" className="flex items-center gap-3 group">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-orange-200 group-hover:scale-105 transition-transform flex-shrink-0">
+                            O
                         </div>
                         {!isCollapsed && (
                             <motion.div
@@ -76,14 +79,14 @@ export default function AdminLayout() {
                                 className="whitespace-nowrap"
                             >
                                 <div className="text-xl font-black text-gray-800 tracking-tight">
-                                    Admin
+                                    OAO.TO
                                 </div>
-                                <div className="text-xs text-blue-500 font-bold uppercase tracking-wider">
-                                    Control Panel
+                                <div className="text-xs text-orange-500 font-bold uppercase tracking-wider">
+                                    Admin Portal
                                 </div>
                             </motion.div>
                         )}
-                    </div>
+                    </Link>
                 </div>
 
                 {/* Back to Dashboard Link */}
@@ -171,10 +174,12 @@ export default function AdminLayout() {
                     <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-xl">
                         <Menu className="w-6 h-6" />
                     </button>
-                    <div className="flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-blue-600" />
-                        <span className="font-black text-lg text-gray-900">Admin</span>
-                    </div>
+                    <Link to="/" className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-sm font-black">
+                            O
+                        </div>
+                        <span className="font-black text-lg text-gray-900">OAO.TO</span>
+                    </Link>
                     <UserMenu />
                 </header>
 
@@ -213,15 +218,15 @@ export default function AdminLayout() {
                             className="fixed inset-y-0 left-0 w-80 bg-white z-50 lg:hidden shadow-2xl p-6 flex flex-col"
                         >
                             <div className="flex items-center justify-between mb-8">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white">
-                                        <Shield className="w-5 h-5" />
+                                <Link to="/" className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-xl font-black">
+                                        O
                                     </div>
                                     <div>
-                                        <div className="text-lg font-black text-gray-800">Admin Panel</div>
-                                        <div className="text-xs text-blue-600">System Management</div>
+                                        <div className="text-lg font-black text-gray-800">OAO.TO</div>
+                                        <div className="text-xs text-orange-500 font-bold uppercase">Admin Portal</div>
                                     </div>
-                                </div>
+                                </Link>
                                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full">
                                     <X className="w-6 h-6" />
                                 </button>

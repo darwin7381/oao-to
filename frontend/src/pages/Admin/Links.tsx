@@ -23,25 +23,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
-
-interface AdminLink {
-    id: string;
-    slug: string;
-    url: string;
-    user_id: string;
-    user_email: string;
-    clicks: number;
-    created_at: string;
-    last_clicked_at?: string;
-    is_active: boolean;
-    is_flagged: boolean;
-    flag_reason?: string;
-}
+import { adminApi, type AdminLink } from '../../lib/adminApi';
 
 export default function AdminLinks() {
     const { token } = useAuth();
     const [links, setLinks] = useState<AdminLink[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'flagged' | 'inactive'>('all');
     const [selectedLink, setSelectedLink] = useState<AdminLink | null>(null);
@@ -49,11 +37,11 @@ export default function AdminLinks() {
     const [showFlagModal, setShowFlagModal] = useState(false);
     const [flagReason, setFlagReason] = useState('');
 
-    const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
-
     useEffect(() => {
-        loadLinks();
-    }, [token, apiUrl]);
+        loadLinks().catch((error) => {
+            console.error('[Links] Unhandled error:', error);
+        });
+    }, [token]);
 
     const loadLinks = async () => {
         if (!token) {
@@ -62,19 +50,13 @@ export default function AdminLinks() {
         }
 
         setLoading(true);
+        setError(null);
         try {
-            const res = await fetch(`${apiUrl}/api/admin/links?limit=100`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setLinks(data.data.links);
-            } else {
-                console.warn('API not ready, using mock data');
-            }
-        } catch (error) {
-            console.warn('Failed to load links, using mock data:', error);
+            const data = await adminApi.getLinks(100);
+            setLinks(data.data.links);
+        } catch (err: any) {
+            console.error('Failed to load links:', err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }
@@ -86,20 +68,12 @@ export default function AdminLinks() {
         if (!confirm('確定要永久刪除這個連結嗎？此操作無法復原。')) return;
 
         try {
-            const res = await fetch(`${apiUrl}/api/admin/links/${linkId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                setLinks(links.filter(l => l.id !== linkId));
-                setShowDetailsModal(false);
-            } else {
-                alert('刪除失敗');
-            }
-        } catch (error) {
-            console.error('Failed to delete link:', error);
-            alert('刪除失敗');
+            await adminApi.deleteLink(linkId);
+            setLinks(links.filter(l => l.id !== linkId));
+            setShowDetailsModal(false);
+        } catch (err: any) {
+            console.error('Failed to delete link:', err);
+            alert(`刪除失敗：${err.message}`);
         }
     };
 
@@ -107,32 +81,17 @@ export default function AdminLinks() {
         if (!selectedLink) return;
 
         try {
-            const res = await fetch(`${apiUrl}/api/admin/links/${selectedLink.id}/flag`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    reason: flagReason,
-                    disable: true
-                })
-            });
-
-            if (res.ok) {
-                loadLinks();
-                setShowFlagModal(false);
-                setFlagReason('');
-            } else {
-                alert('標記失敗');
-            }
-        } catch (error) {
-            console.error('Failed to flag link:', error);
-            alert('標記失敗');
+            await adminApi.flagLink(selectedLink.id, flagReason, true);
+            await loadLinks();
+            setShowFlagModal(false);
+            setFlagReason('');
+        } catch (err: any) {
+            console.error('Failed to flag link:', err);
+            alert(`標記失敗：${err.message}`);
         }
     };
 
-    const filteredLinks = displayLinks.filter(link => {
+    const filteredLinks = (displayLinks || []).filter(link => {
         if (filterStatus !== 'all') {
             if (filterStatus === 'active' && !link.is_active) return false;
             if (filterStatus === 'inactive' && link.is_active) return false;
@@ -180,7 +139,7 @@ export default function AdminLinks() {
                             <LinkIcon className="w-5 h-5 text-purple-500" />
                         </div>
                         <div className="text-3xl font-black text-gray-900">
-                            {displayLinks.length.toLocaleString()}
+                            {(displayLinks?.length || 0).toLocaleString()}
                         </div>
                     </CardContent>
                 </Card>

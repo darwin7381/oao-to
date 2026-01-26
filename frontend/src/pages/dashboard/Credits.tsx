@@ -62,6 +62,7 @@ export default function Credits() {
 
   useEffect(() => {
     const fetchData = async () => {
+      console.log('[Credits] Fetching data...');
       try {
         const [creditsRes, txRes] = await Promise.all([
           fetch(`${apiUrl}/api/account/credits`, { headers: { 'Authorization': `Bearer ${token}` } }),
@@ -84,7 +85,9 @@ export default function Credits() {
       }
     };
 
-    fetchData();
+    fetchData().catch((error) => {
+      console.error('[Credits] Unhandled error in fetchData:', error);
+    });
   }, [apiUrl, token]);
 
 

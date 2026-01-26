@@ -41,7 +41,9 @@ export default function ApiKeys() {
   const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
 
   useEffect(() => {
-    loadKeys();
+    loadKeys().catch((error) => {
+      console.error('[ApiKeys] Unhandled error:', error);
+    });
   }, []);
 
   const loadKeys = async () => {

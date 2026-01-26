@@ -11,6 +11,9 @@ import adminRouter from './routes/admin';
 import apiKeysRouter from './routes/api-keys';
 import accountRouter from './routes/account';
 import v1LinksRouter from './routes/v1-links';
+import auditLogsRouter from './routes/audit-logs';
+import supportRouter from './routes/support';
+import plansRouter from './routes/plans';
 import type { Env, LinkData } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -341,6 +344,9 @@ app.route('/api/auth', authRouter);
 app.route('/api/links', linksRouter);
 app.route('/api/analytics', analyticsRouter);
 app.route('/api/admin', adminRouter);
+app.route('/api/admin/audit-logs', auditLogsRouter);
+app.route('/api/admin/support', supportRouter);
+app.route('/api/admin/plans', plansRouter);
 
 // API 平台路由
 app.route('/api/account/keys', apiKeysRouter);  // API Key 管理
