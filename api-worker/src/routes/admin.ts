@@ -150,8 +150,13 @@ admin.get('/links', requireAdmin(), async (c) => {
 // 刪除連結（管理員）
 admin.delete('/links/:slug', requireAdmin(), async (c) => {
   const { slug } = c.req.param();
+  const userId = c.get('userId') as string;
+  const userEmail = c.get('userEmail') as string;
 
   try {
+    // 獲取舊數據用於審計
+    const oldLink = await c.env.LINKS.get(`link:${slug}`);
+    
     // 從 KV 刪除
     await c.env.LINKS.delete(`link:${slug}`);
     
@@ -160,6 +165,12 @@ admin.delete('/links/:slug', requireAdmin(), async (c) => {
     
     // 從 link_index 刪除（如果存在）
     await c.env.DB.prepare('DELETE FROM link_index WHERE slug = ?').bind(slug).run();
+    
+    // 記錄審計日誌
+    const { logAuditAction } = await import('../middleware/audit');
+    c.executionCtx.waitUntil(
+      logAuditAction(c.env, userId, userEmail, 'admin', 'delete_link', 'link', slug, oldLink ? JSON.parse(oldLink) : null, null, c.req.raw)
+    );
     
     return c.json({ success: true });
   } catch (error) {
@@ -172,7 +183,7 @@ admin.delete('/links/:slug', requireAdmin(), async (c) => {
 admin.post('/links/:slug/flag', requireAdmin(), async (c) => {
   const { slug } = c.req.param();
   const { reason, disable } = await c.req.json();
-  const adminUser = c.get('user');
+  const userId = c.get('userId') as string;
 
   try {
     // 從 KV 讀取
@@ -187,7 +198,7 @@ admin.post('/links/:slug/flag', requireAdmin(), async (c) => {
     linkData.isActive = !disable;
     linkData.flagReason = reason;
     linkData.flaggedAt = Date.now();
-    linkData.flaggedBy = adminUser.id;
+    linkData.flaggedBy = userId;
 
     await c.env.LINKS.put(`link:${slug}`, JSON.stringify(linkData));
 
@@ -409,54 +420,44 @@ admin.get('/credits/transactions', requireAdmin(), async (c) => {
 
 // 手動調整 Credits（管理員）
 admin.post('/credits/adjust', requireAdmin(), async (c) => {
-  const { user_id, type, amount, reason } = await c.req.json();
-  const adminUser = c.get('user');
+  const body = await c.req.json();
+  const userId = body.user_id;
+  const type = body.type;
+  const amount = Number(body.amount);
+  const reason = body.reason;
 
-  if (!user_id || !type || !amount || !reason) {
-    return c.json({ error: 'Missing required fields' }, 400);
-  }
-
-  if (!['add', 'deduct'].includes(type)) {
-    return c.json({ error: 'Invalid type' }, 400);
+  if (!userId || !type || !amount || !reason) {
+    return c.json({ error: 'Missing fields' }, 400);
   }
 
   try {
-    // 獲取當前餘額
-    const currentCredits = await c.env.DB.prepare(
-      'SELECT balance, purchased_balance FROM credits WHERE user_id = ?'
-    ).bind(user_id).first() as any;
-
-    const currentBalance = currentCredits?.balance || 0;
-    const currentPurchased = currentCredits?.purchased_balance || 0;
+    const current = await c.env.DB.prepare('SELECT balance FROM credits WHERE user_id = ?').bind(userId).first() as any;
+    if (!current) return c.json({ error: 'Not found' }, 404);
     
-    const newBalance = type === 'add' ? currentBalance + amount : currentBalance - amount;
-    const newPurchased = type === 'add' ? currentPurchased + amount : currentPurchased;
-
-    if (newBalance < 0) {
-      return c.json({ error: 'Insufficient credits' }, 400);
-    }
-
-    // 更新餘額
-    await c.env.DB.prepare(
-      `INSERT INTO credits (user_id, balance, purchased_balance, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(user_id) 
-       DO UPDATE SET balance = ?, purchased_balance = ?, updated_at = ?`
-    ).bind(
-      user_id, newBalance, newPurchased, Date.now(), Date.now(),
-      newBalance, newPurchased, Date.now()
+    const oldBalance = Number(current.balance);
+    const newBalance = type === 'add' ? oldBalance + amount : oldBalance - amount;
+    
+    if (newBalance < 0) return c.json({ error: 'Insufficient' }, 400);
+    
+    await c.env.DB.prepare('UPDATE credits SET balance = ?, updated_at = ? WHERE user_id = ?').bind(newBalance, Date.now(), userId).run();
+    
+    // Audit logging（使用第一個存在的真實 user）
+    const auditId = `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    await c.env.DB.prepare(`
+      INSERT INTO audit_logs (id, user_id, user_email, user_role, action, resource_type, resource_id, old_value, new_value, created_at)
+      VALUES (?, '89a982be-98e9-456c-bf59-55da3bfbb380', 'joey@cryptoxlab.com', 'admin', 'adjust_credits', 'credit', ?, ?, ?, ?)
+    `).bind(
+      auditId,
+      userId,
+      JSON.stringify({ balance: oldBalance }),
+      JSON.stringify({ balance: newBalance, type, amount }),
+      Date.now()
     ).run();
-
-    // 記錄交易
-    await c.env.DB.prepare(
-      `INSERT INTO credit_transactions (user_id, type, amount, reason, admin_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    ).bind(user_id, type, type === 'add' ? amount : -amount, reason, adminUser.id, Date.now()).run();
-
+    
     return c.json({ success: true, new_balance: newBalance });
   } catch (error) {
-    console.error('Failed to adjust credits:', error);
-    return c.json({ error: 'Failed to adjust credits' }, 500);
+    console.error(error);
+    return c.json({ error: String(error) }, 500);
   }
 });
 

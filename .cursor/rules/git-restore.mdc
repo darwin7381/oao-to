@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+絕對禁止在用戶未同意的情況下使用任何回溯指令，尤其是 git restore

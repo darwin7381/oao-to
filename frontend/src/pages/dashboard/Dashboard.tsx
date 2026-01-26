@@ -20,7 +20,9 @@ export default function Dashboard() {
   const [createLoading, setCreateLoading] = useState(false);
 
   useEffect(() => {
-    loadLinks();
+    loadLinks().catch((error) => {
+      console.error('[Dashboard] Unhandled error:', error);
+    });
   }, []);
 
   const loadLinks = async () => {

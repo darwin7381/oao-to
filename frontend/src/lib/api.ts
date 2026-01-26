@@ -37,26 +37,52 @@ class API {
 
   private async request(endpoint: string, options: RequestInit = {}) {
     const token = this.getToken();
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const fullUrl = `${API_BASE}${endpoint}`;
+    console.log(`[api] ${options.method || 'GET'} ${fullUrl}`);
+
+    const response = await fetch(fullUrl, {
       ...options,
       headers,
     });
 
+    console.log(`[api] Response: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || 'Request failed');
+      let errorData: any;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { error: 'Request failed' };
+      }
+      
+      console.error('[api] ❌ Error:', {
+        status: response.status,
+        errorData,
+        url: fullUrl
+      });
+      
+      const error = new Error(errorData.error || 'Request failed');
+      console.error('[api] ❌ Throwing:', error);
+      throw error;
     }
 
-    return response.json();
+    try {
+      const jsonData = await response.json();
+      console.log(`[api] ✅ Success`);
+      return jsonData;
+    } catch (parseError) {
+      console.error('[api] ❌ JSON parse failed:', parseError);
+      throw new Error('Failed to parse response');
+    }
   }
 
   // Auth

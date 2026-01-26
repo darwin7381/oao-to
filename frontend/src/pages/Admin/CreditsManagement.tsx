@@ -17,33 +17,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
-
-interface UserCredit {
-    user_id: string;
-    email: string;
-    name: string;
-    total_credits: number;
-    subscription_credits: number;
-    purchased_credits: number;
-    plan: string;
-    last_transaction_at?: string;
-}
-
-interface Transaction {
-    id: string;
-    user_id: string;
-    type: 'add' | 'deduct' | 'purchase' | 'subscription';
-    amount: number;
-    reason: string;
-    admin_id?: string;
-    created_at: string;
-}
+import { adminApi, type UserCredit, type CreditTransaction } from '../../lib/adminApi';
 
 export default function AdminCreditsManagement() {
     const { token } = useAuth();
     const [users, setUsers] = useState<UserCredit[]>([]);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showAdjustModal, setShowAdjustModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserCredit | null>(null);
@@ -53,11 +34,11 @@ export default function AdminCreditsManagement() {
         reason: ''
     });
 
-    const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
-
     useEffect(() => {
-        loadData();
-    }, [token, apiUrl]);
+        loadData().catch((error) => {
+            console.error('[Credits] Unhandled error:', error);
+        });
+    }, [token]);
 
     const loadData = async () => {
         if (!token) {
@@ -66,31 +47,18 @@ export default function AdminCreditsManagement() {
         }
 
         setLoading(true);
+        setError(null);
         try {
-            const [usersRes, txRes] = await Promise.all([
-                fetch(`${apiUrl}/api/admin/credits/users`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }),
-                fetch(`${apiUrl}/api/admin/credits/transactions?limit=50`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
+            const [usersData, txData] = await Promise.all([
+                adminApi.getCreditUsers(),
+                adminApi.getCreditTransactions(50),
             ]);
 
-            if (usersRes.ok) {
-                const data = await usersRes.json();
-                setUsers(data.data.users);
-            } else {
-                console.warn('Users API not ready, using mock data');
-            }
-
-            if (txRes.ok) {
-                const data = await txRes.json();
-                setTransactions(data.data.transactions);
-            } else {
-                console.warn('Transactions API not ready, using mock data');
-            }
-        } catch (error) {
-            console.warn('Failed to load data, using mock data:', error);
+            setUsers(usersData.data.users);
+            setTransactions(txData.data.transactions);
+        } catch (err: any) {
+            console.error('Failed to load data:', err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }
@@ -103,39 +71,28 @@ export default function AdminCreditsManagement() {
         if (!selectedUser) return;
 
         try {
-            const res = await fetch(`${apiUrl}/api/admin/credits/adjust`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    user_id: selectedUser.user_id,
-                    type: adjustForm.type,
-                    amount: parseInt(adjustForm.amount),
-                    reason: adjustForm.reason
-                })
+            await adminApi.adjustCredits({
+                user_id: selectedUser.user_id,
+                type: adjustForm.type,
+                amount: parseInt(adjustForm.amount),
+                reason: adjustForm.reason
             });
 
-            if (res.ok) {
-                setShowAdjustModal(false);
-                setAdjustForm({ amount: '', type: 'add', reason: '' });
-                loadData();
-            } else {
-                alert('Failed to adjust credits');
-            }
-        } catch (error) {
-            console.error('Failed to adjust credits:', error);
-            alert('Failed to adjust credits');
+            setShowAdjustModal(false);
+            setAdjustForm({ amount: '', type: 'add', reason: '' });
+            await loadData();
+        } catch (err: any) {
+            console.error('Failed to adjust credits:', err);
+            alert(`調整 Credits 失敗：${err.message}`);
         }
     };
 
-    const filteredUsers = displayUsers.filter(user =>
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredUsers = (displayUsers || []).filter(user =>
+        (user.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const totalCredits = displayUsers.reduce((sum, user) => sum + user.total_credits, 0);
+    const totalCredits = (displayUsers || []).reduce((sum, user) => sum + (user.total_credits || 0), 0);
 
     if (loading) {
         return (
@@ -245,17 +202,17 @@ export default function AdminCreditsManagement() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="font-black text-gray-900 text-lg">
-                                                {user.total_credits.toLocaleString()}
+                                                {(user.total_credits || 0).toLocaleString()}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="text-sm text-blue-600 font-bold">
-                                                {user.subscription_credits.toLocaleString()}
+                                                {(user.subscription_credits || 0).toLocaleString()}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="text-sm text-green-600 font-bold">
-                                                {user.purchased_credits.toLocaleString()}
+                                                {(user.purchased_credits || 0).toLocaleString()}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -337,7 +294,7 @@ export default function AdminCreditsManagement() {
                                 <div>
                                     <div className="font-semibold text-blue-900">{selectedUser.name}</div>
                                     <div className="text-sm text-blue-700">
-                                        Current balance: <span className="font-bold">{selectedUser.total_credits.toLocaleString()}</span> credits
+                                        Current balance: <span className="font-bold">{(selectedUser.total_credits || 0).toLocaleString()}</span> credits
                                     </div>
                                 </div>
                             </div>

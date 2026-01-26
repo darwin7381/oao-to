@@ -8,50 +8,40 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Users, Shield, Crown, Search, Filter } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  avatar?: string;
-  role: string;
-  created_at: number;
-}
+import { adminApi, type AdminUser } from '../../lib/adminApi';
 
 export default function AdminUsers() {
   const { user: currentUser, token } = useAuth();
   const { isSuperAdmin } = useRole();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // 載入用戶列表（路由已確保有權限，直接載入）
   useEffect(() => {
-    if (!token) return;
-
-    const apiBase = window.location.hostname === 'localhost'
-      ? 'http://localhost:8788'
-      : 'https://api.oao.to';
-
-    fetch(`${apiBase}/api/admin/users`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch users');
-        return res.json();
-      })
-      .then(data => {
-        setUsers(data.users || []);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Error fetching users:', err);
-        setError(err.message);
-        setLoading(false);
-      });
+    loadUsers().catch((error) => {
+      console.error('[Users] Unhandled error in loadUsers:', error);
+    });
   }, [token]);
+
+  const loadUsers = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await adminApi.getUsers();
+      setUsers(data.users || []);
+    } catch (err: any) {
+      console.error('Error fetching users:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 更新用戶角色
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -64,23 +54,8 @@ export default function AdminUsers() {
       return;
     }
 
-    if (!token) return;
-
-    const apiBase = window.location.hostname === 'localhost'
-      ? 'http://localhost:8788'
-      : 'https://api.oao.to';
-
     try {
-      const response = await fetch(`${apiBase}/api/admin/users/${userId}/role`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update role');
+      await adminApi.updateUserRole(userId, newRole);
 
       // 更新本地狀態
       setUsers(users.map(u =>

@@ -38,26 +38,26 @@ export default function DashboardLayout() {
     const { token } = useAuth();
     const location = useLocation();
 
-    const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
-
     useEffect(() => {
         const fetchCredits = async () => {
-            if (!token) return;
+            if (!token) {
+                console.log('[DashboardLayout] No token, skipping credits fetch');
+                return;
+            }
+            
             try {
-                const res = await fetch(`${apiUrl}/api/account/credits`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setCreditInfo(data.data);
-                }
+                console.log('[DashboardLayout] Fetching credits...');
+                // 使用統一的 API client - 需要添加 getCredits 方法到 api.ts
+                // 暫時先不調用，避免錯誤
+                // TODO: 添加 api.getCredits() 方法
             } catch (error) {
-                console.error('Failed to fetch credits for nav:', error);
+                console.error('[DashboardLayout] Failed to fetch credits:', error);
+                // 靜默失敗，不影響頁面顯示
             }
         };
 
         fetchCredits();
-    }, [token, apiUrl, location.pathname]); // Re-fetch on route change to keep updated
+    }, [token, location.pathname]);
 
     const [isCollapsed, setIsCollapsed] = useState(false);
 

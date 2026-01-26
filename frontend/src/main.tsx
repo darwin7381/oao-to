@@ -23,13 +23,16 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 import AdminLayout from './components/layout/AdminLayout';
-import AdminStats from './pages/admin/Stats';
-import AdminPayments from './pages/admin/Payments';
-import AdminCreditsManagement from './pages/admin/CreditsManagement';
-import AdminSettings from './pages/admin/Settings';
-import AdminLinks from './pages/admin/Links';
-import AdminApiKeysMonitoring from './pages/admin/ApiKeysMonitoring';
-import AdminAnalytics from './pages/admin/Analytics';
+import AdminStats from './pages/Admin/Stats';
+import AdminPayments from './pages/Admin/Payments';
+import AdminCreditsManagement from './pages/Admin/CreditsManagement';
+import AdminSettings from './pages/Admin/Settings';
+import AdminAuditLogs from './pages/Admin/AuditLogs';
+import AdminSupport from './pages/Admin/SupportTickets';
+import AdminPlans from './pages/Admin/PlansManagement';
+import AdminLinks from './pages/Admin/Links';
+import AdminApiKeysMonitoring from './pages/Admin/ApiKeysMonitoring';
+import AdminAnalytics from './pages/Admin/Analytics';
 // 路由結構：
 // 公開路由：
 // / - 公開首頁（快速縮短）
@@ -190,6 +193,30 @@ function App() {
             element={
               <AdminRoute>
                 <AdminSettings />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/audit-logs"
+            element={
+              <AdminRoute>
+                <AdminAuditLogs />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/support"
+            element={
+              <AdminRoute>
+                <AdminSupport />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/plans"
+            element={
+              <AdminRoute>
+                <AdminPlans />
               </AdminRoute>
             }
           />

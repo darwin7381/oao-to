@@ -22,42 +22,23 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
-
-interface AdminApiKey {
-    id: string;
-    user_id: string;
-    user_email: string;
-    name: string;
-    keyPrefix: string;
-    environment: 'live' | 'test';
-    isActive: boolean;
-    scopes: string[];
-    totalRequests: number;
-    requestsToday: number;
-    lastUsedAt?: string;
-    createdAt: string;
-    rateLimit: {
-        perMinute: number;
-        perDay: number;
-    };
-    rateLimitHits: number;
-    errorRate: number;
-}
+import { adminApi, type AdminApiKey } from '../../lib/adminApi';
 
 export default function AdminApiKeysMonitoring() {
     const { token } = useAuth();
     const [apiKeys, setApiKeys] = useState<AdminApiKey[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedKey, setSelectedKey] = useState<AdminApiKey | null>(null);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [showRevokeModal, setShowRevokeModal] = useState(false);
 
-    const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
-
     useEffect(() => {
-        loadApiKeys();
-    }, [token, apiUrl]);
+        loadApiKeys().catch((error) => {
+            console.error('[ApiKeys] Unhandled error:', error);
+        });
+    }, [token]);
 
     const loadApiKeys = async () => {
         if (!token) {
@@ -66,19 +47,13 @@ export default function AdminApiKeysMonitoring() {
         }
 
         setLoading(true);
+        setError(null);
         try {
-            const res = await fetch(`${apiUrl}/api/admin/api-keys`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setApiKeys(data.data.keys);
-            } else {
-                console.warn('API not ready, using mock data');
-            }
-        } catch (error) {
-            console.warn('Failed to load API keys, using mock data:', error);
+            const data = await adminApi.getApiKeys();
+            setApiKeys(data.data.keys);
+        } catch (err: any) {
+            console.error('Failed to load API keys:', err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }
@@ -90,37 +65,29 @@ export default function AdminApiKeysMonitoring() {
         if (!selectedKey) return;
 
         try {
-            const res = await fetch(`${apiUrl}/api/admin/api-keys/${selectedKey.id}/revoke`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                loadApiKeys();
-                setShowRevokeModal(false);
-                setShowDetailsModal(false);
-            } else {
-                alert('撤銷失敗');
-            }
-        } catch (error) {
-            console.error('Failed to revoke key:', error);
-            alert('撤銷失敗');
+            await adminApi.revokeApiKey(selectedKey.id);
+            await loadApiKeys();
+            setShowRevokeModal(false);
+            setShowDetailsModal(false);
+        } catch (err: any) {
+            console.error('Failed to revoke key:', err);
+            alert(`撤銷失敗：${err.message}`);
         }
     };
 
-    const filteredKeys = displayKeys.filter(key => {
+    const filteredKeys = (displayKeys || []).filter(key => {
         if (!searchQuery) return true;
         const query = searchQuery.toLowerCase();
         return (
-            key.user_email.toLowerCase().includes(query) ||
-            key.name.toLowerCase().includes(query) ||
-            key.keyPrefix.toLowerCase().includes(query)
+            (key.user_email || '').toLowerCase().includes(query) ||
+            (key.name || '').toLowerCase().includes(query) ||
+            (key.key_prefix || '').toLowerCase().includes(query)
         );
     });
 
-    const totalRequests = displayKeys.reduce((sum, key) => sum + key.totalRequests, 0);
-    const activeKeys = displayKeys.filter(k => k.isActive).length;
-    const suspiciousKeys = displayKeys.filter(k => k.errorRate > 20 || k.rateLimitHits > 100).length;
+    const totalRequests = displayKeys.reduce((sum, key) => sum + (key.totalRequests || 0), 0);
+    const activeKeys = displayKeys.filter(k => k.is_active).length;
+    const suspiciousKeys = displayKeys.filter(k => ((k.errorRate || 0) > 20 || (k.rateLimitHits || 0) > 100)).length;
 
     if (loading) {
         return (
@@ -285,8 +252,8 @@ export default function AdminApiKeysMonitoring() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-semibold text-gray-900">{key.name}</span>
-                                                    {key.environment === 'test' && (
+                                                    <span className="font-semibold text-gray-900">{key.name || 'Unnamed'}</span>
+                                                    {key.keyPrefix?.includes('test') && (
                                                         <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs">
                                                             TEST
                                                         </Badge>
@@ -379,13 +346,12 @@ export default function AdminApiKeysMonitoring() {
                 </CardContent>
             </Card>
 
-            {/* Details Modal */}
             <Modal
                 isOpen={showDetailsModal}
                 onClose={() => setShowDetailsModal(false)}
                 title="API Key Details"
             >
-                {selectedKey && (
+                {selectedKey ? (
                     <div className="space-y-6">
                         <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                             <div className="flex items-center justify-between mb-3">
@@ -393,8 +359,8 @@ export default function AdminApiKeysMonitoring() {
                                     <Key className="w-5 h-5 text-blue-600" />
                                     <span className="font-bold text-blue-900">{selectedKey.name}</span>
                                 </div>
-                                <Badge className={selectedKey.environment === 'live' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}>
-                                    {selectedKey.environment.toUpperCase()}
+                                <Badge className={(selectedKey.keyPrefix?.includes('live')) ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}>
+                                    {selectedKey.keyPrefix?.includes('live') ? 'LIVE' : 'TEST'}
                                 </Badge>
                             </div>
                             <code className="text-xs font-mono text-gray-600 block bg-white px-3 py-2 rounded border border-blue-200">
@@ -446,7 +412,7 @@ export default function AdminApiKeysMonitoring() {
                         <div className="p-4 bg-gray-50 rounded-xl">
                             <div className="text-xs text-gray-500 mb-2 font-semibold">Scopes</div>
                             <div className="flex flex-wrap gap-2">
-                                {selectedKey.scopes.map(scope => (
+                                {(typeof selectedKey.scopes === 'string' ? selectedKey.scopes.split(',') : selectedKey.scopes || []).map(scope => (
                                     <Badge key={scope} className="bg-blue-50 text-blue-700 border-blue-200">
                                         {scope}
                                     </Badge>
@@ -489,10 +455,10 @@ export default function AdminApiKeysMonitoring() {
                             )}
                         </div>
                     </div>
-                )}
+                ) : null}
             </Modal>
 
-            {/* Revoke Confirmation Modal */}
+            
             <Modal
                 isOpen={showRevokeModal}
                 onClose={() => setShowRevokeModal(false)}

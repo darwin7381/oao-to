@@ -15,32 +15,21 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
-
-interface Payment {
-    id: string;
-    user_id: string;
-    user_email: string;
-    amount: number;
-    status: 'completed' | 'pending' | 'failed' | 'refunded';
-    plan: string;
-    credits: number;
-    payment_method: string;
-    created_at: string;
-    stripe_payment_id?: string;
-}
+import { adminApi, type Payment } from '../../lib/adminApi';
 
 export default function AdminPayments() {
     const { token } = useAuth();
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<'all' | 'completed' | 'pending' | 'failed' | 'refunded'>('all');
     const [searchQuery, setSearchQuery] = useState('');
 
-    const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
-
     useEffect(() => {
-        loadPayments();
-    }, [token, apiUrl]);
+        loadPayments().catch((error) => {
+            console.error('[Payments] Unhandled error:', error);
+        });
+    }, [token]);
 
     const loadPayments = async () => {
         if (!token) {
@@ -49,19 +38,13 @@ export default function AdminPayments() {
         }
 
         setLoading(true);
+        setError(null);
         try {
-            const res = await fetch(`${apiUrl}/api/admin/payments`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setPayments(data.data.payments);
-            } else {
-                console.warn('API not ready, using mock data');
-            }
-        } catch (error) {
-            console.warn('Failed to load payments, using mock data:', error);
+            const data = await adminApi.getPayments();
+            setPayments(data.data.payments);
+        } catch (err: any) {
+            console.error('Failed to load payments:', err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }

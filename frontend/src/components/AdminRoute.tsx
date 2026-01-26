@@ -30,30 +30,12 @@ export default function AdminRoute({ children, requireSuperAdmin = false }: Admi
   }
 
   // 檢查權限
-  if (requireSuperAdmin) {
-    if (!isSuperAdmin) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-red-600 mb-2">權限不足</h2>
-            <p className="text-gray-600 mb-4">需要超級管理員權限</p>
-            <Navigate to="/" replace />
-          </div>
-        </div>
-      );
-    }
-  } else {
-    if (!isAdmin) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-red-600 mb-2">權限不足</h2>
-            <p className="text-gray-600 mb-4">需要管理員權限</p>
-            <Navigate to="/" replace />
-          </div>
-        </div>
-      );
-    }
+  if (requireSuperAdmin && !isSuperAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  if (!requireSuperAdmin && !isAdmin) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   // 有權限則顯示內容

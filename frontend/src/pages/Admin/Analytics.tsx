@@ -28,28 +28,20 @@ import {
     PieChart,
     Pie
 } from 'recharts';
-
-interface AnalyticsData {
-    userGrowth: Array<{ date: string; users: number; newUsers: number }>;
-    linkGrowth: Array<{ date: string; links: number; newLinks: number }>;
-    revenueGrowth: Array<{ date: string; revenue: number }>;
-    topUsers: Array<{ email: string; links: number; clicks: number }>;
-    topLinks: Array<{ slug: string; clicks: number; url: string }>;
-    clicksByCountry: Array<{ country: string; clicks: number }>;
-    planDistribution: Array<{ plan: string; count: number; value: number }>;
-}
+import { adminApi, type AnalyticsData } from '../../lib/adminApi';
 
 export default function AdminAnalytics() {
     const { token } = useAuth();
     const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
 
-    const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
-
     useEffect(() => {
-        loadAnalytics();
-    }, [timeRange, token, apiUrl]);
+        loadAnalytics().catch((error) => {
+            console.error('[Analytics] Unhandled error:', error);
+        });
+    }, [timeRange, token]);
 
     const loadAnalytics = async () => {
         if (!token) {
@@ -58,70 +50,17 @@ export default function AdminAnalytics() {
         }
 
         setLoading(true);
+        setError(null);
         try {
-            const res = await fetch(`${apiUrl}/api/admin/analytics?range=${timeRange}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setAnalytics(data.data);
-            } else {
-                console.warn('API not ready, using mock data');
-            }
-        } catch (error) {
-            console.warn('Failed to load analytics, using mock data:', error);
+            const response = await adminApi.getAnalytics(timeRange);
+            setAnalytics(response.data);
+        } catch (err: any) {
+            console.error('Failed to load analytics:', err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }
     };
-
-    // Mock data
-    const mockAnalytics: AnalyticsData = {
-        userGrowth: Array.from({ length: 30 }, (_, i) => ({
-            date: new Date(Date.now() - (29 - i) * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            users: 1000 + i * 50 + Math.random() * 100,
-            newUsers: 10 + Math.floor(Math.random() * 30)
-        })),
-        linkGrowth: Array.from({ length: 30 }, (_, i) => ({
-            date: new Date(Date.now() - (29 - i) * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            links: 5000 + i * 200 + Math.random() * 500,
-            newLinks: 50 + Math.floor(Math.random() * 150)
-        })),
-        revenueGrowth: Array.from({ length: 30 }, (_, i) => ({
-            date: new Date(Date.now() - (29 - i) * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            revenue: 100 + i * 50 + Math.random() * 200
-        })),
-        topUsers: [
-            { email: 'power-user@company.com', links: 456, clicks: 123456 },
-            { email: 'marketing@startup.io', links: 234, clicks: 98765 },
-            { email: 'social@brand.com', links: 189, clicks: 76543 },
-            { email: 'blogger@medium.com', links: 145, clicks: 54321 },
-            { email: 'developer@tech.co', links: 123, clicks: 43210 },
-        ],
-        topLinks: [
-            { slug: 'viral-post', clicks: 45678, url: 'https://blog.example.com/viral' },
-            { slug: 'product-launch', clicks: 34567, url: 'https://startup.io/launch' },
-            { slug: 'tutorial', clicks: 23456, url: 'https://dev.to/guide' },
-            { slug: 'promo-2026', clicks: 19876, url: 'https://shop.com/promo' },
-            { slug: 'article', clicks: 15432, url: 'https://news.site/article' },
-        ],
-        clicksByCountry: [
-            { country: 'United States', clicks: 234567 },
-            { country: 'United Kingdom', clicks: 123456 },
-            { country: 'Germany', clicks: 98765 },
-            { country: 'Japan', clicks: 87654 },
-            { country: 'Canada', clicks: 76543 },
-        ],
-        planDistribution: [
-            { plan: 'Free', count: 800, value: 800 },
-            { plan: 'Starter', count: 250, value: 250 },
-            { plan: 'Pro', count: 150, value: 150 },
-            { plan: 'Enterprise', count: 47, value: 47 },
-        ]
-    };
-
-    const displayAnalytics = analytics || mockAnalytics;
 
     const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'];
 
@@ -132,6 +71,31 @@ export default function AdminAnalytics() {
             </div>
         );
     }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                <div className="text-red-500 text-xl font-bold mb-4">⚠️ 載入分析數據失敗</div>
+                <div className="text-gray-600 mb-4 bg-red-50 px-4 py-2 rounded-lg">{error}</div>
+                <button 
+                    onClick={() => loadAnalytics()} 
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+                >
+                    重試
+                </button>
+            </div>
+        );
+    }
+
+    if (!analytics) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-gray-500">無分析數據</div>
+            </div>
+        );
+    }
+
+    const displayAnalytics = analytics;
 
     return (
         <div className="space-y-8">
@@ -280,7 +244,7 @@ export default function AdminAnalytics() {
                                         <div>
                                             <div className="font-semibold text-gray-900">{user.email}</div>
                                             <div className="text-xs text-gray-500 font-semibold">
-                                                {user.links} links · {user.clicks.toLocaleString()} clicks
+                                                {user.links || 0} links · {(user.clicks || 0).toLocaleString()} clicks
                                             </div>
                                         </div>
                                     </div>
@@ -320,7 +284,7 @@ export default function AdminAnalytics() {
                                                 oao.to/{link.slug}
                                             </div>
                                             <div className="text-xs text-gray-500 font-semibold">
-                                                {link.clicks.toLocaleString()} clicks
+                                                {(link.clicks || 0).toLocaleString()} clicks
                                             </div>
                                         </div>
                                     </div>

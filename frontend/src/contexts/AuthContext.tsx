@@ -48,7 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    checkAuth();
+    checkAuth().catch((error) => {
+      console.error('[AuthContext] Unhandled error in checkAuth:', error);
+      setLoading(false);
+    });
   }, []);
 
   const login = () => {
