@@ -1,15 +1,13 @@
 // Plans Management API
 import { Hono } from 'hono';
-import { createAuthMiddleware } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
 import { requireAdmin } from '../middleware/role';
 import type { Env } from '../types';
 
 const plans = new Hono<{ Bindings: Env }>();
 
-plans.use('*', async (c, next) => {
-  const middleware = createAuthMiddleware(c.env.JWT_SECRET);
-  return middleware(c, next);
-});
+// 使用 requireAuth 而不是 createAuthMiddleware
+plans.use('*', requireAuth);
 
 // 獲取所有方案
 plans.get('/', requireAdmin(), async (c) => {
@@ -99,6 +97,25 @@ plans.put('/:id', requireAdmin(), async (c) => {
 
     const sql = `UPDATE plans SET ${fields.join(', ')} WHERE id = ?`;
     await c.env.DB.prepare(sql).bind(...bindings).run();
+
+    // 記錄審計日誌
+    try {
+      const { logAuditAction } = await import('../middleware/audit');
+      await logAuditAction(
+        c.env,
+        userId,
+        userEmail,
+        userRole,
+        'update_plan',
+        'plan',
+        id,
+        oldPlan,
+        updates,
+        c.req.raw
+      );
+    } catch (auditError) {
+      console.error('[UpdatePlan] Failed to log audit:', auditError);
+    }
 
     return c.json({ success: true });
   } catch (error) {

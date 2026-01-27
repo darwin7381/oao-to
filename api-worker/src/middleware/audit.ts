@@ -19,6 +19,20 @@ export async function logAuditAction(
   try {
     const id = `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
+    // 參數驗證和清理
+    const safeUserId = userId || 'unknown';
+    const safeUserEmail = userEmail || 'unknown';
+    const safeUserRole = userRole || 'unknown';
+    const safeResourceId = resourceId || null;
+    const safeOldValue = oldValue ? JSON.stringify(oldValue) : null;
+    const safeNewValue = newValue ? JSON.stringify(newValue) : null;
+    const safeIpAddress = request?.headers.get('cf-connecting-ip') || request?.headers.get('x-forwarded-for') || null;
+    const safeUserAgent = request?.headers.get('user-agent') || null;
+    
+    console.log('[AuditLog] Creating log with safe params:', { 
+      id, action, resourceType, userId: safeUserId, resourceId: safeResourceId 
+    });
+    
     await env.DB.prepare(`
       INSERT INTO audit_logs (
         id, user_id, user_email, user_role,
@@ -29,20 +43,23 @@ export async function logAuditAction(
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
-      userId,
-      userEmail,
-      userRole,
+      safeUserId,
+      safeUserEmail,
+      safeUserRole,
       action,
       resourceType,
-      resourceId || null,
-      oldValue ? JSON.stringify(oldValue) : null,
-      newValue ? JSON.stringify(newValue) : null,
-      request?.headers.get('cf-connecting-ip') || request?.headers.get('x-forwarded-for') || null,
-      request?.headers.get('user-agent') || null,
+      safeResourceId,
+      safeOldValue,
+      safeNewValue,
+      safeIpAddress,
+      safeUserAgent,
       Date.now()
     ).run();
+    
+    console.log('[AuditLog] Successfully created:', id);
   } catch (error) {
-    console.error('Failed to log audit action:', error);
-    // 不影響主業務流程
+    console.error('[AuditLog] Failed to log audit action:', error);
+    console.error('[AuditLog] Parameters:', { userId, userEmail, userRole, action, resourceType, resourceId });
+    throw error;
   }
 }

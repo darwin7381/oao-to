@@ -1,15 +1,13 @@
 // Audit Logs API
 import { Hono } from 'hono';
-import { createAuthMiddleware } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
 import { requireAdmin } from '../middleware/role';
 import type { Env } from '../types';
 
 const auditLogs = new Hono<{ Bindings: Env }>();
 
-auditLogs.use('*', async (c, next) => {
-  const middleware = createAuthMiddleware(c.env.JWT_SECRET);
-  return middleware(c, next);
-});
+// 使用 requireAuth 而不是 createAuthMiddleware  
+auditLogs.use('*', requireAuth);
 
 // 獲取 Audit Logs 列表
 auditLogs.get('/', requireAdmin(), async (c) => {
@@ -69,7 +67,7 @@ auditLogs.get('/:id', requireAdmin(), async (c) => {
       return c.json({ error: 'Audit log not found' }, 404);
     }
 
-    return c.json({ data: log });
+    return c.json({ data: { log } });
   } catch (error) {
     console.error('Failed to fetch audit log:', error);
     return c.json({ error: 'Failed to fetch audit log' }, 500);

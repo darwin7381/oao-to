@@ -1,17 +1,14 @@
 // 管理員 API 路由
 
 import { Hono } from 'hono';
-import { createAuthMiddleware } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
 import { requireAdmin, requireSuperAdmin } from '../middleware/role';
 import type { Env } from '../types';
 
 const admin = new Hono<{ Bindings: Env }>();
 
-// 所有管理員路由都需要 JWT 認證
-admin.use('*', async (c, next) => {
-  const middleware = createAuthMiddleware(c.env.JWT_SECRET);
-  return middleware(c, next);
-});
+// 所有管理員路由都需要 JWT 認證（使用 requireAuth 來正確設置 context）
+admin.use('*', requireAuth);
 
 // 獲取所有用戶（需要管理員權限）
 admin.get('/users', requireAdmin(), async (c) => {
@@ -34,6 +31,9 @@ admin.get('/users', requireAdmin(), async (c) => {
 admin.put('/users/:userId/role', requireSuperAdmin(), async (c) => {
   const { userId } = c.req.param();
   const { role } = await c.req.json();
+  const adminId = c.get('userId') as string;
+  const adminEmail = c.get('userEmail') as string;
+  const adminRole = c.get('userRole') as string;
 
   // 驗證角色
   if (!['user', 'admin', 'superadmin'].includes(role)) {
@@ -41,9 +41,29 @@ admin.put('/users/:userId/role', requireSuperAdmin(), async (c) => {
   }
 
   try {
+    // 獲取舊數據
+    const oldUser = await c.env.DB.prepare(
+      'SELECT role FROM users WHERE id = ?'
+    ).bind(userId).first();
+
     await c.env.DB.prepare(
       'UPDATE users SET role = ?, updated_at = ? WHERE id = ?'
     ).bind(role, Date.now(), userId).run();
+
+    // 記錄審計日誌
+    const { logAuditAction } = await import('../middleware/audit');
+    await logAuditAction(
+      c.env, 
+      adminId, 
+      adminEmail, 
+      adminRole, 
+      'update_user_role', 
+      'user', 
+      userId, 
+      oldUser || { role: 'unknown' },  // 確保不是 null/undefined
+      { role }, 
+      c.req.raw
+    );
 
     return c.json({ success: true, message: 'Role updated' });
   } catch (error) {
@@ -152,6 +172,7 @@ admin.delete('/links/:slug', requireAdmin(), async (c) => {
   const { slug } = c.req.param();
   const userId = c.get('userId') as string;
   const userEmail = c.get('userEmail') as string;
+  const userRole = c.get('userRole') as string;
 
   try {
     // 獲取舊數據用於審計
@@ -166,11 +187,13 @@ admin.delete('/links/:slug', requireAdmin(), async (c) => {
     // 從 link_index 刪除（如果存在）
     await c.env.DB.prepare('DELETE FROM link_index WHERE slug = ?').bind(slug).run();
     
-    // 記錄審計日誌
-    const { logAuditAction } = await import('../middleware/audit');
-    c.executionCtx.waitUntil(
-      logAuditAction(c.env, userId, userEmail, 'admin', 'delete_link', 'link', slug, oldLink ? JSON.parse(oldLink) : null, null, c.req.raw)
-    );
+    // 記錄審計日誌（同步執行）
+    try {
+      const { logAuditAction } = await import('../middleware/audit');
+      await logAuditAction(c.env, userId, userEmail, userRole, 'delete_link', 'link', slug, oldLink ? JSON.parse(oldLink) : null, null, c.req.raw);
+    } catch (auditError) {
+      console.error('[DeleteLink] Failed to log audit:', auditError);
+    }
     
     return c.json({ success: true });
   } catch (error) {
@@ -184,6 +207,8 @@ admin.post('/links/:slug/flag', requireAdmin(), async (c) => {
   const { slug } = c.req.param();
   const { reason, disable } = await c.req.json();
   const userId = c.get('userId') as string;
+  const userEmail = c.get('userEmail') as string;
+  const userRole = c.get('userRole') as string;
 
   try {
     // 從 KV 讀取
@@ -193,6 +218,7 @@ admin.post('/links/:slug/flag', requireAdmin(), async (c) => {
     }
 
     const linkData = JSON.parse(kvStr);
+    const oldData = { ...linkData };
 
     // 更新 KV
     linkData.isActive = !disable;
@@ -201,6 +227,25 @@ admin.post('/links/:slug/flag', requireAdmin(), async (c) => {
     linkData.flaggedBy = userId;
 
     await c.env.LINKS.put(`link:${slug}`, JSON.stringify(linkData));
+
+    // 記錄審計日誌
+    try {
+      const { logAuditAction } = await import('../middleware/audit');
+      await logAuditAction(
+        c.env, 
+        userId, 
+        userEmail, 
+        userRole, 
+        'flag_link', 
+        'link', 
+        slug, 
+        { isActive: oldData.isActive }, 
+        { isActive: linkData.isActive, reason }, 
+        c.req.raw
+      );
+    } catch (auditError) {
+      console.error('[FlagLink] Failed to log audit:', auditError);
+    }
 
     // 清除快取
     const cache = caches.default;
@@ -240,11 +285,27 @@ admin.get('/api-keys', requireAdmin(), async (c) => {
 // 撤銷 API Key（管理員）
 admin.post('/api-keys/:keyId/revoke', requireAdmin(), async (c) => {
   const { keyId } = c.req.param();
+  const userId = c.get('userId') as string;
+  const userEmail = c.get('userEmail') as string;
+  const userRole = c.get('userRole') as string;
 
   try {
+    // 獲取舊數據
+    const oldKey = await c.env.DB.prepare(
+      'SELECT * FROM api_keys WHERE id = ?'
+    ).bind(keyId).first();
+
     await c.env.DB.prepare(
       'UPDATE api_keys SET is_active = 0 WHERE id = ?'
     ).bind(keyId).run();
+
+    // 記錄審計日誌（同步執行）
+    try {
+      const { logAuditAction } = await import('../middleware/audit');
+      await logAuditAction(c.env, userId, userEmail, userRole, 'revoke_api_key', 'api_key', keyId, oldKey, { is_active: 0 }, c.req.raw);
+    } catch (auditError) {
+      console.error('[RevokeKey] Failed to log audit:', auditError);
+    }
 
     return c.json({ success: true });
   } catch (error) {
@@ -441,18 +502,28 @@ admin.post('/credits/adjust', requireAdmin(), async (c) => {
     
     await c.env.DB.prepare('UPDATE credits SET balance = ?, updated_at = ? WHERE user_id = ?').bind(newBalance, Date.now(), userId).run();
     
-    // Audit logging（使用第一個存在的真實 user）
-    const auditId = `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    await c.env.DB.prepare(`
-      INSERT INTO audit_logs (id, user_id, user_email, user_role, action, resource_type, resource_id, old_value, new_value, created_at)
-      VALUES (?, '89a982be-98e9-456c-bf59-55da3bfbb380', 'joey@cryptoxlab.com', 'admin', 'adjust_credits', 'credit', ?, ?, ?, ?)
-    `).bind(
-      auditId,
-      userId,
-      JSON.stringify({ balance: oldBalance }),
-      JSON.stringify({ balance: newBalance, type, amount }),
-      Date.now()
-    ).run();
+    // 記錄審計日誌（使用統一的 logAuditAction）
+    const adminId = c.get('userId') as string;
+    const adminEmail = c.get('userEmail') as string;
+    const adminRole = c.get('userRole') as string;
+    
+    try {
+      const { logAuditAction } = await import('../middleware/audit');
+      await logAuditAction(
+        c.env,
+        adminId,
+        adminEmail,
+        adminRole,
+        'adjust_credits',
+        'credit',
+        userId,
+        { balance: oldBalance },
+        { balance: newBalance, type, amount, reason },
+        c.req.raw
+      );
+    } catch (auditError) {
+      console.error('[AdjustCredits] Failed to log audit:', auditError);
+    }
     
     return c.json({ success: true, new_balance: newBalance });
   } catch (error) {

@@ -184,49 +184,37 @@ class AdminAPI {
     };
 
     const fullUrl = `${API_BASE}${endpoint}`;
-    console.log(`[adminApi] ${options.method || 'GET'} ${fullUrl}`);
 
     const response = await fetch(fullUrl, {
       ...options,
       headers,
     });
 
-    console.log(`[adminApi] Response: ${response.status} ${response.statusText}`);
-
     if (!response.ok) {
       let errorData: any;
       try {
         errorData = await response.json();
       } catch (parseError) {
-        console.error('[adminApi] Failed to parse error response:', parseError);
         errorData = { error: 'Request failed' };
       }
       
-      console.error('[adminApi] ❌ Error response:', {
+      console.error('[adminApi] Error:', {
+        method: options.method || 'GET',
+        url: fullUrl,
         status: response.status,
-        statusText: response.statusText,
-        errorData,
-        url: fullUrl
+        error: errorData
       });
       
-      // 詳細的錯誤訊息
       const errorMessage = errorData.error || errorData.message || `Request failed with status ${response.status}`;
-      const error = new Error(errorMessage);
-      console.error('[adminApi] ❌ Throwing error:', error);
-      throw error;
+      throw new Error(errorMessage);
     }
 
-    // 成功響應
-    let jsonData: T;
     try {
-      jsonData = await response.json();
-      console.log(`[adminApi] ✅ Parsed JSON successfully`);
+      return await response.json();
     } catch (parseError) {
-      console.error('[adminApi] ❌ Failed to parse success response:', parseError);
+      console.error('[adminApi] Failed to parse response:', parseError);
       throw new Error('Failed to parse API response');
     }
-    
-    return jsonData;
   }
 
   // ==================== Stats & Analytics ====================
