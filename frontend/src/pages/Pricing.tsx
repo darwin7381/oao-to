@@ -9,44 +9,9 @@ import { Button } from '../components/ui/Button';
 
 export default function Pricing() {
   const { user, login } = useAuth();
-  const [plans, setPlans] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    const loadPlans = async () => {
-      try {
-        const { adminApi } = await import('../lib/adminApi');
-        const data = await adminApi.getPlans();
-        
-        // 转换为前端需要的格式
-        const formattedPlans = data.data.plans
-          .filter(p => p.is_visible)
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map(p => ({
-            id: p.id,
-            name: p.display_name,
-            planType: p.name,
-            price: p.price_monthly === 0 ? '$0' : p.price_monthly >= 100 ? 'Custom' : `$${p.price_monthly.toFixed(2)}`,
-            period: p.price_monthly === 0 ? 'forever' : p.price_monthly >= 100 ? 'contact us' : 'per month',
-            monthlyCredits: p.monthly_credits,
-            features: JSON.parse(p.features || '[]'),
-            cta: user && user.plan === p.name ? 'Current Plan' : p.price_monthly >= 100 ? 'Contact Sales' : `Upgrade to ${p.display_name}`,
-            ctaVariant: 'default' as const,
-          }));
-        
-        setPlans(formattedPlans);
-      } catch (error) {
-        console.error('Failed to load plans:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadPlans();
-  }, [user]);
-
-  // 保留一个默认的 plans 数组作为 fallback
-  const fallbackPlans = [
+  // TODO: 未来改为从 API 动态获取，目前使用配置
+  const plans = [
     {
       name: 'Free',
       icon: Zap,
@@ -125,16 +90,6 @@ export default function Pricing() {
     },
   ];
 
-  const displayPlans = plans.length > 0 ? plans : fallbackPlans;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-400"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen relative overflow-hidden bg-background font-nunito">
       {/* Background Blobs */}
@@ -174,7 +129,7 @@ export default function Pricing() {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16"
           >
-            {displayPlans.map((plan, index) => (
+            {plans.map((plan, index) => (
               <motion.div
                 key={plan.name}
                 initial={{ opacity: 0, y: 50 }}
