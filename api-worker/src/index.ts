@@ -34,6 +34,28 @@ app.use('*', cors({
 // 健康檢查
 app.get('/health', (c) => c.json({ status: 'ok', service: 'oao.to-api' }));
 
+// 公开的 Plans 端点（不需要认证）
+app.get('/public/plans', async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, name, display_name, price_monthly, price_yearly, 
+             monthly_credits, api_calls_per_day, max_api_keys, 
+             features, sort_order
+      FROM plans
+      WHERE is_active = 1 AND is_visible = 1
+      ORDER BY sort_order ASC
+    `).all();
+    
+    return c.json({
+      success: true,
+      data: { plans: results }
+    });
+  } catch (error) {
+    console.error('Failed to fetch plans:', error);
+    return c.json({ error: 'Failed to fetch plans' }, 500);
+  }
+});
+
 // 🌐 公開端點：快速創建短網址（無需登入）
 app.post('/shorten', async (c) => {
   const { url, customSlug } = await c.req.json();

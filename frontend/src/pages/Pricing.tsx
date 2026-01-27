@@ -1,17 +1,97 @@
 import { motion } from 'framer-motion';
-import { Check, Zap, Crown, Rocket, HelpCircle } from 'lucide-react';
+import { Check, Zap, Crown, Rocket, HelpCircle, TrendingUp, DollarSign } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useState, useEffect } from 'react';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 
+interface Plan {
+  id: string;
+  name: string;
+  display_name: string;
+  price_monthly: number;
+  price_yearly: number;
+  monthly_credits: number;
+  features: string;
+  sort_order: number;
+}
+
 export default function Pricing() {
   const { user, login } = useAuth();
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // TODO: 未来改为从 API 动态获取，目前使用配置
-  const plans = [
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
+        const response = await fetch(`${apiUrl}/public/plans`);
+        if (response.ok) {
+          const data = await response.json();
+          setPlans(data.data.plans || []);
+        }
+      } catch (error) {
+        console.error('Failed to load plans:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPlans();
+  }, []);
+
+  const displayPlans = plans.length > 0 ? plans.map(p => {
+    const color = planColors[p.name] || planColors.free;
+    const Icon = planIcons[p.name] || Zap;
+    const features = JSON.parse(p.features || '[]');
+    
+    return {
+      id: p.id,
+      name: p.display_name,
+      planType: p.name,
+      icon: Icon,
+      iconColor: color.icon,
+      iconBg: color.bg,
+      borderColor: color.border,
+      hoverBorder: color.hover,
+      shadowColor: 'shadow-orange-400/30',
+      price: p.price_monthly === 0 ? '$0' : p.price_monthly >= 100 ? 'Custom' : `$${p.price_monthly}`,
+      period: p.price_monthly === 0 ? 'forever' : p.price_monthly >= 100 ? 'contact us' : 'per month',
+      description: `${p.monthly_credits.toLocaleString()} credits/month`,
+      features: features,
+      cta: user ? 'Current Plan' : p.price_monthly >= 100 ? 'Contact Sales' : 'Get Started',
+      ctaVariant: 'default' as const,
+      popular: p.name === 'pro',
+      rotate: 'rotate-0',
+    };
+  }) : fallbackPlans;
+
+  const planIcons: Record<string, any> = {
+    free: Zap,
+    starter: TrendingUp,
+    pro: Crown,
+    enterprise: Rocket,
+  };
+
+  const planColors: Record<string, any> = {
+    free: { icon: 'text-blue-500', bg: 'bg-blue-100', border: 'border-blue-100', hover: 'hover:border-blue-300' },
+    starter: { icon: 'text-green-500', bg: 'bg-green-100', border: 'border-green-100', hover: 'hover:border-green-300' },
+    pro: { icon: 'text-orange-500', bg: 'bg-orange-100', border: 'border-orange-200', hover: 'hover:border-orange-400' },
+    enterprise: { icon: 'text-purple-500', bg: 'bg-purple-100', border: 'border-purple-100', hover: 'hover:border-purple-300' },
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-400"></div>
+      </div>
+    );
+  }
+
+  // Fallback 静态数据（如果 API 失败）
+  const fallbackPlans = [
     {
       name: 'Free',
       icon: Zap,
@@ -208,41 +288,88 @@ export default function Pricing() {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="mb-20"
           >
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-black text-gray-800 mb-3">
-                💳 <span className="text-purple-500">Pay-As-You-Go</span> Pricing
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 border-2 border-purple-100 text-purple-600 rounded-full text-sm font-bold shadow-sm mb-4">
+                <DollarSign className="w-4 h-4" />
+                Flexible Billing
+              </div>
+              <h2 className="text-4xl font-black text-gray-800 mb-4">
+                Never run out of credits
               </h2>
-              <p className="text-gray-500 font-medium max-w-2xl mx-auto">
-                When you exceed your monthly quota, credits are consumed based on usage
+              <p className="text-lg text-gray-500 font-medium max-w-2xl mx-auto">
+                When you use all your monthly quota, we automatically use your purchased credits. 
+                No service interruption, complete control.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              <Card className="p-6 text-center bg-gradient-to-br from-blue-50 to-white border-2 border-blue-100">
-                <h3 className="text-lg font-bold text-blue-600 mb-2">Link Creation</h3>
-                <div className="text-3xl font-black text-gray-900 mb-1">1 credit</div>
-                <p className="text-sm text-gray-500 font-medium">per short link created via API</p>
-              </Card>
+            <Card className="max-w-4xl mx-auto p-8 bg-gradient-to-br from-white to-gray-50 border-2 border-gray-100">
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-black text-gray-800 mb-2">How it works</h3>
+                <p className="text-gray-600 font-medium">Simple, transparent, and predictable</p>
+              </div>
 
-              <Card className="p-6 text-center bg-gradient-to-br from-purple-50 to-white border-2 border-purple-100">
-                <h3 className="text-lg font-bold text-purple-600 mb-2">Analytics Query</h3>
-                <div className="text-3xl font-black text-gray-900 mb-1">0.1 credit</div>
-                <p className="text-sm text-gray-500 font-medium">per analytics API call</p>
-              </Card>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl font-black text-blue-600">1</span>
+                  </div>
+                  <h4 className="font-bold text-gray-900 mb-2">Use your monthly quota</h4>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Every plan includes free monthly quota. Use it for your regular traffic.
+                  </p>
+                </div>
 
-              <Card className="p-6 text-center bg-gradient-to-br from-green-50 to-white border-2 border-green-100">
-                <h3 className="text-lg font-bold text-green-600 mb-2">Overage Rate</h3>
-                <div className="text-3xl font-black text-gray-900 mb-1">$0.01</div>
-                <p className="text-sm text-gray-500 font-medium">per credit when exceeding quota</p>
-              </Card>
-            </div>
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl font-black text-purple-600">2</span>
+                  </div>
+                  <h4 className="font-bold text-gray-900 mb-2">Tap into purchased credits</h4>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    When quota runs out, we use your purchased credits automatically. No interruption.
+                  </p>
+                </div>
 
-            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl max-w-4xl mx-auto">
-              <p className="text-sm text-yellow-800 font-medium text-center">
-                💡 <strong>Note:</strong> Pay-As-You-Go rates apply when users exceed their monthly quota. 
-                Subscription credits are always used first, then purchased credits.
-              </p>
-            </div>
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl font-black text-green-600">3</span>
+                  </div>
+                  <h4 className="font-bold text-gray-900 mb-2">Top up anytime</h4>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Buy credits in advance at $10 per 1000 credits. Never expires, always available.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-100">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 mb-2">Example: Growing startup</h4>
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      Starter plan (1,000 free quota/month) + 500 purchased credits<br/>
+                      <span className="text-gray-500">Usage: 1,200 links created this month</span>
+                    </p>
+                    <div className="mt-3 text-sm space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-green-600 font-semibold">✓ First 1,000</span>
+                        <span className="text-gray-600">Free (included in $9.99 plan)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-blue-600 font-semibold">✓ Next 200</span>
+                        <span className="text-gray-600">From purchased credits (200/500 used)</span>
+                      </div>
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+                        <span className="text-gray-900 font-bold">Total cost this month:</span>
+                        <span className="text-gray-900 font-black">$9.99</span>
+                        <span className="text-gray-500 text-xs">(no overage charges)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
           </motion.div>
 
           {/* FAQ Section */}
