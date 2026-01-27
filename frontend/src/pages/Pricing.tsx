@@ -9,8 +9,44 @@ import { Button } from '../components/ui/Button';
 
 export default function Pricing() {
   const { user, login } = useAuth();
+  const [plans, setPlans] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-  const plans = [
+  React.useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        const { adminApi } = await import('../lib/adminApi');
+        const data = await adminApi.getPlans();
+        
+        // 转换为前端需要的格式
+        const formattedPlans = data.data.plans
+          .filter(p => p.is_visible)
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map(p => ({
+            id: p.id,
+            name: p.display_name,
+            planType: p.name,
+            price: p.price_monthly === 0 ? '$0' : p.price_monthly >= 100 ? 'Custom' : `$${p.price_monthly.toFixed(2)}`,
+            period: p.price_monthly === 0 ? 'forever' : p.price_monthly >= 100 ? 'contact us' : 'per month',
+            monthlyCredits: p.monthly_credits,
+            features: JSON.parse(p.features || '[]'),
+            cta: user && user.plan === p.name ? 'Current Plan' : p.price_monthly >= 100 ? 'Contact Sales' : `Upgrade to ${p.display_name}`,
+            ctaVariant: 'default' as const,
+          }));
+        
+        setPlans(formattedPlans);
+      } catch (error) {
+        console.error('Failed to load plans:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadPlans();
+  }, [user]);
+
+  // 保留一个默认的 plans 数组作为 fallback
+  const fallbackPlans = [
     {
       name: 'Free',
       icon: Zap,
@@ -89,6 +125,16 @@ export default function Pricing() {
     },
   ];
 
+  const displayPlans = plans.length > 0 ? plans : fallbackPlans;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-400"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen relative overflow-hidden bg-background font-nunito">
       {/* Background Blobs */}
@@ -128,7 +174,7 @@ export default function Pricing() {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16"
           >
-            {plans.map((plan, index) => (
+            {displayPlans.map((plan, index) => (
               <motion.div
                 key={plan.name}
                 initial={{ opacity: 0, y: 50 }}
@@ -200,11 +246,55 @@ export default function Pricing() {
             ))}
           </motion.div>
 
+          {/* Pay-As-You-Go Pricing */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.6 }}
+            className="mb-20"
+          >
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-black text-gray-800 mb-3">
+                💳 <span className="text-purple-500">Pay-As-You-Go</span> Pricing
+              </h2>
+              <p className="text-gray-500 font-medium max-w-2xl mx-auto">
+                When you exceed your monthly quota, credits are consumed based on usage
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              <Card className="p-6 text-center bg-gradient-to-br from-blue-50 to-white border-2 border-blue-100">
+                <h3 className="text-lg font-bold text-blue-600 mb-2">Link Creation</h3>
+                <div className="text-3xl font-black text-gray-900 mb-1">1 credit</div>
+                <p className="text-sm text-gray-500 font-medium">per short link created via API</p>
+              </Card>
+
+              <Card className="p-6 text-center bg-gradient-to-br from-purple-50 to-white border-2 border-purple-100">
+                <h3 className="text-lg font-bold text-purple-600 mb-2">Analytics Query</h3>
+                <div className="text-3xl font-black text-gray-900 mb-1">0.1 credit</div>
+                <p className="text-sm text-gray-500 font-medium">per analytics API call</p>
+              </Card>
+
+              <Card className="p-6 text-center bg-gradient-to-br from-green-50 to-white border-2 border-green-100">
+                <h3 className="text-lg font-bold text-green-600 mb-2">Overage Rate</h3>
+                <div className="text-3xl font-black text-gray-900 mb-1">$0.01</div>
+                <p className="text-sm text-gray-500 font-medium">per credit when exceeding quota</p>
+              </Card>
+            </div>
+
+            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl max-w-4xl mx-auto">
+              <p className="text-sm text-yellow-800 font-medium text-center">
+                💡 <strong>Note:</strong> Pay-As-You-Go rates apply when users exceed their monthly quota. 
+                Subscription credits are always used first, then purchased credits.
+              </p>
+            </div>
+          </motion.div>
+
           {/* FAQ Section */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
           >
             <div className="text-center mb-12">
               <h2 className="text-4xl font-black text-gray-800 mb-4">
