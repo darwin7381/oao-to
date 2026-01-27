@@ -51,8 +51,9 @@ export interface UserCredit {
   email: string;
   name: string;
   total_credits: number;
-  subscription_credits: number;
   purchased_credits: number;
+  monthly_quota: number;
+  monthly_used: number;
   plan: string;
   last_transaction_at?: string;
 }
@@ -60,11 +61,15 @@ export interface UserCredit {
 export interface CreditTransaction {
   id: string;
   user_id: string;
-  type: 'add' | 'deduct' | 'purchase' | 'subscription';
+  type: string;
   amount: number;
-  reason: string;
+  balance_after: number;
+  description?: string;
+  reason?: string;
   admin_id?: string;
-  created_at: string;
+  user_name?: string;
+  user_email?: string;
+  created_at: string | number;
 }
 
 export interface Payment {

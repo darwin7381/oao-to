@@ -8,6 +8,9 @@ import type { Env, LinkData } from '../types';
 
 const links = new Hono<{ Bindings: Env }>();
 
+// 所有路由都需要認證
+links.use('/*', requireAuth);
+
 // 創建短網址
 links.post('/', async (c) => {
   const { url, slug, title } = await c.req.json();
@@ -59,14 +62,53 @@ links.post('/', async (c) => {
 links.get('/', async (c) => {
   const user = getUserFromContext(c);
   
-  const result = await c.env.DB.prepare(
-    'SELECT slug, url, title, created_at FROM links WHERE user_id = ? ORDER BY created_at DESC'
-  ).bind(user.userId).all();
-
-  return c.json({
-    links: result.results || [],
-    total: result.results?.length || 0,
-  });
+  // 臨時方案：從 KV 讀取並過濾（因為 D1 links 表還沒有數據）
+  // TODO: 將 KV 數據同步到 D1 後，改回查詢 D1
+  try {
+    const list = await c.env.LINKS.list({ prefix: 'link:' });
+    
+    const allLinks = await Promise.all(
+      list.keys.map(async (key) => {
+        const data = await c.env.LINKS.get(key.name);
+        if (!data) return null;
+        
+        try {
+          const linkData = JSON.parse(data);
+          return linkData;
+        } catch {
+          return null;
+        }
+      })
+    );
+    
+    // 過濾只屬於當前用戶的連結（包括 anonymous 對於向後兼容）
+    const userLinks = allLinks.filter(link => 
+      link && (link.userId === user.userId || link.user_id === user.userId)
+    );
+    
+    // 生成 shortUrl
+    const baseUrl = c.req.header('host')?.includes('localhost')
+      ? `http://${c.req.header('host').replace(':8788', ':8787')}`
+      : 'https://oao.to';
+    
+    const links = userLinks
+      .map((link: any) => ({
+        slug: link.slug,
+        url: link.url,
+        title: link.title || link.url,
+        createdAt: link.createdAt || link.created_at,
+        shortUrl: `${baseUrl}/${link.slug}`,
+      }))
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // 按時間倒序
+    
+    return c.json({
+      links,
+      total: links.length,
+    });
+  } catch (error) {
+    console.error('Failed to fetch links from KV:', error);
+    return c.json({ error: 'Failed to fetch links' }, 500);
+  }
 });
 
 // 獲取單個短網址詳情

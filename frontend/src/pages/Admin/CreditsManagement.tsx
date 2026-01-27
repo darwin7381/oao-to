@@ -173,10 +173,10 @@ export default function AdminCreditsManagement() {
                             <thead className="bg-gray-50/50 border-b border-gray-100">
                                 <tr>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Plan</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Total</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Subscription</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Purchased</th>
+                                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Plan</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Available</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Balance</th>
+                                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Monthly</th>
                                     <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
@@ -195,24 +195,34 @@ export default function AdminCreditsManagement() {
                                                 <div className="text-sm text-gray-500">{user.email}</div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <Badge variant="secondary" className="font-semibold bg-blue-50 text-blue-700 border-blue-100">
+                                        <td className="px-6 py-4 text-center">
+                                            <Badge variant="secondary" className="font-semibold bg-blue-50 text-blue-700 border-blue-100 capitalize">
                                                 {user.plan}
                                             </Badge>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="font-black text-gray-900 text-lg">
+                                            <div className="font-black text-purple-600 text-xl">
+                                                {((user.monthly_quota || 0) - (user.monthly_used || 0) + (user.total_credits || 0)).toLocaleString()}
+                                            </div>
+                                            <div className="text-xs text-gray-400 font-medium">total available</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="font-bold text-gray-900 text-lg">
                                                 {(user.total_credits || 0).toLocaleString()}
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="text-sm text-blue-600 font-bold">
-                                                {(user.subscription_credits || 0).toLocaleString()}
+                                            <div className="text-xs text-gray-500 space-x-2">
+                                                <span className="text-green-600">Pur: {(user.purchased_credits || 0).toLocaleString()}</span>
+                                                <span className={(user.total_credits || 0) - (user.purchased_credits || 0) >= 0 ? "text-orange-600" : "text-red-600"}>
+                                                    Bon: {((user.total_credits || 0) - (user.purchased_credits || 0)).toLocaleString()}
+                                                </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="text-sm text-green-600 font-bold">
-                                                {(user.purchased_credits || 0).toLocaleString()}
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="font-mono text-sm font-bold text-gray-700">
+                                                {(user.monthly_used || 0)} / {(user.monthly_quota || 100)}
+                                            </div>
+                                            <div className="text-xs text-gray-400">
+                                                {((user.monthly_quota || 100) - (user.monthly_used || 0)).toLocaleString()} left
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -254,22 +264,29 @@ export default function AdminCreditsManagement() {
                                 <div className="flex items-center gap-4">
                                     <div className={cn(
                                         "w-10 h-10 rounded-full flex items-center justify-center font-bold",
-                                        tx.type === 'add' ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                                        tx.amount > 0 ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
                                     )}>
-                                        {tx.type === 'add' ? <Plus className="w-5 h-5" /> : <Minus className="w-5 h-5" />}
+                                        {tx.amount > 0 ? <Plus className="w-5 h-5" /> : <Minus className="w-5 h-5" />}
                                     </div>
-                                    <div>
-                                        <div className="font-bold text-gray-900">{tx.reason}</div>
-                                        <div className="text-xs text-gray-500 font-medium">
-                                            {new Date(tx.created_at).toLocaleString()}
+                                    <div className="flex-1">
+                                        <div className="font-bold text-gray-900">{tx.description || tx.reason || 'Admin adjustment'}</div>
+                                        <div className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                                            <span>{new Date(tx.created_at).toLocaleString()}</span>
+                                            {tx.user_name && (
+                                                <>
+                                                    <span className="text-gray-300">•</span>
+                                                    <span className="text-blue-600 font-semibold">{tx.user_name}</span>
+                                                    <span className="text-gray-400">({tx.user_email})</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                                 <div className={cn(
                                     "font-black text-lg",
-                                    tx.type === 'add' ? "text-green-600" : "text-red-600"
+                                    tx.amount > 0 ? "text-green-600" : "text-red-600"
                                 )}>
-                                    {tx.type === 'add' ? '+' : '-'}{tx.amount.toLocaleString()}
+                                    {tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString()}
                                 </div>
                             </div>
                         ))}

@@ -37,14 +37,11 @@ CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at DESC);
 -- ==========================================
 -- 2. Credit Transactions 表添加 admin_id 欄位
 -- ==========================================
--- 注意：如果欄位已存在會報錯，但不影響後續 migrations
--- SQLite 不支援 ADD COLUMN IF NOT EXISTS
+-- 添加 admin_id 欄位（如果不存在）
+-- SQLite 會報錯如果欄位已存在，但這是預期的
 
--- 檢查欄位是否已存在（透過查詢，如果失敗表示不存在）
--- ALTER TABLE credit_transactions ADD COLUMN admin_id TEXT;
+-- 嘗試添加欄位（可能會失敗但不影響）
+ALTER TABLE credit_transactions ADD COLUMN admin_id TEXT;
 
--- 改用安全的方式：只在必要時添加
--- 由於此 migration 可能已手動執行過，我們跳過此步驟
--- admin_id 欄位應該已存在
-
+-- 創建索引（使用 IF NOT EXISTS 確保安全）
 CREATE INDEX IF NOT EXISTS idx_credit_transactions_admin_id ON credit_transactions(admin_id);

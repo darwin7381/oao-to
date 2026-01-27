@@ -66,7 +66,7 @@ export default function ApiKeys() {
     try {
       const data = await api.createApiKey(createForm);
 
-      if (res.ok) {
+      if (data.success) {
         setNewKey(data.data.key);
         setShowKeyModal(true);
         setShowCreateModal(false);

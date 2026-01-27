@@ -20,7 +20,6 @@ import { api } from '../../lib/api';
 interface CreditInfo {
   balance: {
     total: number;
-    subscription: number;
     purchased: number;
   };
   plan: {
@@ -121,6 +120,11 @@ export default function Credits() {
   }
 
   const quotaPercentage = Math.min(100, (creditInfo.plan.monthlyUsed / creditInfo.plan.monthlyQuota) * 100);
+  
+  // 計算實際可用總額 = Pool A 剩餘 + Pool B 總額
+  // Pool A: monthly_remaining（每月免費額度）
+  // Pool B: balance.total（永久 credits）
+  const actualAvailableCredits = creditInfo.plan.monthlyRemaining + creditInfo.balance.total;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -152,19 +156,34 @@ export default function Credits() {
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-4 text-orange-50">
                 <Wallet className="w-5 h-5" />
-                <span className="font-semibold uppercase tracking-wider text-sm">Total Balance</span>
+                <span className="font-semibold uppercase tracking-wider text-sm">Available Credits</span>
               </div>
               <div className="text-6xl font-black mb-2 tracking-tight">
-                {creditInfo.balance.total.toLocaleString()}
+                {actualAvailableCredits.toLocaleString()}
               </div>
-              <div className="flex gap-4 text-sm font-medium text-orange-50">
-                <span>Sub: {creditInfo.balance.subscription.toLocaleString()}</span>
-                <span className="w-px h-4 bg-white/20"></span>
-                <span>Purchased: {creditInfo.balance.purchased.toLocaleString()}</span>
+              <div className="flex flex-col gap-2 text-sm font-medium text-orange-50">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <div className="opacity-75">Monthly Free</div>
+                    <div className="font-bold">{creditInfo.plan.monthlyRemaining.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div className="opacity-75">Permanent Balance</div>
+                    <div className="font-bold">{creditInfo.balance.total.toLocaleString()}</div>
+                  </div>
+                </div>
+                <div className="text-xs text-orange-100 opacity-75 pt-1 border-t border-white/20">
+                  Used {creditInfo.plan.monthlyUsed.toLocaleString()}/{creditInfo.plan.monthlyQuota.toLocaleString()} this month · 
+                  Resets {creditInfo.plan.monthlyResetAt ? new Date(creditInfo.plan.monthlyResetAt).toLocaleDateString() : 'monthly'}
+                </div>
               </div>
             </div>
 
             <div className="relative z-10 mt-8 pt-6 border-t border-white/20">
+              <div className="text-xs text-orange-100 opacity-75 mb-3">
+                Purchased: {creditInfo.balance.purchased.toLocaleString()} · 
+                Bonus: {(creditInfo.balance.total - creditInfo.balance.purchased).toLocaleString()}
+              </div>
               <Button variant="secondary" className="bg-white/90 text-orange-600 hover:bg-white border-0 shadow-lg" onClick={() => window.location.href = '/pricing'}>
                 Top Up Credits
               </Button>

@@ -21,6 +21,9 @@ interface NavCreditInfo {
     };
     plan: {
         type: string;
+        monthlyQuota: number;
+        monthlyUsed: number;
+        monthlyRemaining: number;
     };
 }
 
@@ -145,14 +148,19 @@ export default function DashboardLayout() {
                                 {creditInfo?.plan.type ? `${creditInfo?.plan.type} Plan` : 'Loading...'}
                             </div>
                             <div className="font-bold text-2xl text-gray-900 mb-2">
-                                {creditInfo ? creditInfo.balance.total.toLocaleString() : '...'}
+                                {creditInfo ? (creditInfo.plan.monthlyRemaining + creditInfo.balance.total).toLocaleString() : '...'}
                                 <span className="text-xs font-medium text-gray-400 ml-1">credits</span>
                             </div>
 
-                            {/* Simple Progress Bar */}
-                            <div className="h-1.5 w-full bg-orange-100 rounded-full overflow-hidden mb-3">
-                                <div className="h-full bg-orange-400 rounded-full w-3/4" />
-                            </div>
+                            {/* Monthly Quota Progress Bar */}
+                            {creditInfo && (
+                                <div className="h-1.5 w-full bg-orange-100 rounded-full overflow-hidden mb-3">
+                                    <div 
+                                        className="h-full bg-orange-400 rounded-full transition-all" 
+                                        style={{ width: `${Math.min(100, (creditInfo.plan.monthlyUsed / creditInfo.plan.monthlyQuota) * 100)}%` }}
+                                    />
+                                </div>
+                            )}
 
                             <Link to="/pricing" className="text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline transition-colors">
                                 Upgrade Plan
