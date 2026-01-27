@@ -6,7 +6,6 @@ import type { Env } from '../types';
 
 const plans = new Hono<{ Bindings: Env }>();
 
-// 使用 requireAuth 而不是 createAuthMiddleware
 plans.use('*', requireAuth);
 
 // 獲取所有方案

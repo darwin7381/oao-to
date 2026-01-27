@@ -79,7 +79,7 @@ export default function Support() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement form submission
+    // 表單提交（未來整合 Support Ticket 系統）
     setFormSubmitted(true);
     setTimeout(() => {
       setFormSubmitted(false);

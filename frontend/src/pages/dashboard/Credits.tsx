@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-
 import { Button } from '../../components/ui/Button';
 import { motion } from 'framer-motion';
 import {
@@ -16,6 +15,7 @@ import {
   Activity
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { api } from '../../lib/api';
 
 interface CreditInfo {
   balance: {

@@ -6,7 +6,6 @@ import type { Env } from '../types';
 
 const support = new Hono<{ Bindings: Env }>();
 
-// 使用 requireAuth 而不是 createAuthMiddleware
 support.use('*', requireAuth);
 
 // 獲取所有 Tickets

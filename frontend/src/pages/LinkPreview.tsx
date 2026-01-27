@@ -14,11 +14,10 @@ export default function LinkPreview() {
   const [autoRedirect, setAutoRedirect] = useState(true);
 
   useEffect(() => {
-    // TODO: Fetch link data from API
-    // For now, using mock data
+    // Link preview 頁面（展示用，暫不連接實際 API）
     const fetchLinkData = async () => {
       try {
-        // Simulate API call
+        // 模擬 API 延遲
         await new Promise(resolve => setTimeout(resolve, 500));
         
         setLinkData({

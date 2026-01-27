@@ -8,6 +8,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Plus, Copy, Trash2, Power, Key, Shield, Calendar } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { api } from '../../lib/api';
 
 interface ApiKey {
   id: string;
@@ -38,28 +39,24 @@ export default function ApiKeys() {
     scopes: ['links:read', 'links:write'],
   });
 
-  const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
-
   useEffect(() => {
     loadKeys().catch((error) => {
       console.error('[ApiKeys] Unhandled error:', error);
     });
-  }, []);
+  }, [token]);
 
   const loadKeys = async () => {
-    try {
-      const res = await fetch(`${apiUrl}/api/account/keys`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
-      if (res.ok) {
-        const data = await res.json();
-        setKeys(data.data.keys);
-      }
-    } catch (error) {
-      console.error('Failed to load API keys:', error);
+    setLoading(true);
+    try {
+      const data = await api.getApiKeys();
+      setKeys(data.data.keys);
+    } catch (err: any) {
+      console.error('Failed to load API keys:', err);
     } finally {
       setLoading(false);
     }
@@ -67,16 +64,7 @@ export default function ApiKeys() {
 
   const handleCreateKey = async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/account/keys`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(createForm),
-      });
-
-      const data = await res.json();
+      const data = await api.createApiKey(createForm);
 
       if (res.ok) {
         setNewKey(data.data.key);
@@ -101,20 +89,10 @@ export default function ApiKeys() {
 
   const handleToggleKey = async (keyId: string, isActive: boolean) => {
     try {
-      const res = await fetch(`${apiUrl}/api/account/keys/${keyId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ isActive: !isActive }),
-      });
-
-      if (res.ok) {
-        loadKeys();
-      }
-    } catch (error) {
-      console.error('Failed to toggle API key:', error);
+      await api.updateApiKey(keyId, { is_active: !isActive });
+      await loadKeys();
+    } catch (err: any) {
+      console.error('Failed to toggle API key:', err);
     }
   };
 
@@ -124,18 +102,10 @@ export default function ApiKeys() {
     }
 
     try {
-      const res = await fetch(`${apiUrl}/api/account/keys/${keyId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (res.ok) {
-        loadKeys();
-      }
-    } catch (error) {
-      console.error('Failed to delete API key:', error);
+      await api.deleteApiKey(keyId);
+      await loadKeys();
+    } catch (err: any) {
+      console.error('Failed to delete API key:', err);
     }
   };
 

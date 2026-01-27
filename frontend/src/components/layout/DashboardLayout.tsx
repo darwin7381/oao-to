@@ -39,8 +39,21 @@ export default function DashboardLayout() {
     const location = useLocation();
 
     useEffect(() => {
-        // TODO: 使用統一的 API client 獲取 credits
-        // 暫時禁用以避免錯誤
+        const fetchCredits = async () => {
+            if (!token) return;
+            
+            try {
+                const { api } = await import('../../lib/api');
+                const data = await api.getCredits();
+                setCreditInfo(data.data);
+            } catch (err) {
+                // 靜默失敗，不影響導航欄顯示
+            }
+        };
+
+        fetchCredits().catch(() => {
+            // 靜默處理錯誤
+        });
     }, [token, location.pathname]);
 
     const [isCollapsed, setIsCollapsed] = useState(false);
