@@ -180,6 +180,7 @@ export default function Pricing() {
                         login();
                       }
                     }}
+                    type="button"
                   >
                     {plan.cta}
                   </Button>
