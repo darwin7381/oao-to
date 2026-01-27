@@ -47,14 +47,11 @@ class API {
     }
 
     const fullUrl = `${API_BASE}${endpoint}`;
-    console.log(`[api] ${options.method || 'GET'} ${fullUrl}`);
 
     const response = await fetch(fullUrl, {
       ...options,
       headers,
     });
-
-    console.log(`[api] Response: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       let errorData: any;
@@ -64,23 +61,20 @@ class API {
         errorData = { error: 'Request failed' };
       }
       
-      console.error('[api] ❌ Error:', {
+      console.error('[api] Error:', {
+        method: options.method || 'GET',
+        url: fullUrl,
         status: response.status,
-        errorData,
-        url: fullUrl
+        error: errorData
       });
       
-      const error = new Error(errorData.error || 'Request failed');
-      console.error('[api] ❌ Throwing:', error);
-      throw error;
+      throw new Error(errorData.error || 'Request failed');
     }
 
     try {
-      const jsonData = await response.json();
-      console.log(`[api] ✅ Success`);
-      return jsonData;
+      return await response.json();
     } catch (parseError) {
-      console.error('[api] ❌ JSON parse failed:', parseError);
+      console.error('[api] Failed to parse response:', parseError);
       throw new Error('Failed to parse response');
     }
   }

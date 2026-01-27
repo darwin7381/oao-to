@@ -1,15 +1,13 @@
 // Support Tickets API
 import { Hono } from 'hono';
-import { createAuthMiddleware } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
 import { requireAdmin } from '../middleware/role';
 import type { Env } from '../types';
 
 const support = new Hono<{ Bindings: Env }>();
 
-support.use('*', async (c, next) => {
-  const middleware = createAuthMiddleware(c.env.JWT_SECRET);
-  return middleware(c, next);
-});
+// 使用 requireAuth 而不是 createAuthMiddleware
+support.use('*', requireAuth);
 
 // 獲取所有 Tickets
 support.get('/tickets', requireAdmin(), async (c) => {
@@ -141,8 +139,11 @@ support.put('/tickets/:id', requireAdmin(), async (c) => {
 // 回覆 Ticket
 support.post('/tickets/:id/reply', requireAdmin(), async (c) => {
   const { id } = c.req.param();
-  const { message } = await c.req.json();
+  const body = await c.req.json();
+  const message = body.message;
   const userId = c.get('userId') as string;
+  const jwtPayload = c.get('jwtPayload') as any;
+  const userRole = jwtPayload?.role || 'admin';
 
   if (!message) {
     return c.json({ error: 'Message is required' }, 400);
@@ -151,19 +152,22 @@ support.post('/tickets/:id/reply', requireAdmin(), async (c) => {
   try {
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+    console.log('[Reply] Creating message:', { messageId, ticketId: id, userId, userRole });
+
     await c.env.DB.prepare(`
       INSERT INTO ticket_messages (id, ticket_id, user_id, user_role, message, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(messageId, id, userId, 'admin', message, Date.now()).run();
+    `).bind(messageId, id, userId, userRole, message, Date.now()).run();
 
     await c.env.DB.prepare(
       'UPDATE support_tickets SET updated_at = ? WHERE id = ?'
     ).bind(Date.now(), id).run();
 
+    console.log('[Reply] Success');
     return c.json({ success: true, message_id: messageId });
   } catch (error) {
     console.error('Failed to reply to ticket:', error);
-    return c.json({ error: 'Failed to reply' }, 500);
+    return c.json({ error: 'Failed to reply', details: String(error) }, 500);
   }
 });
 

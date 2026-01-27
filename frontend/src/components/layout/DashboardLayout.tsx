@@ -39,24 +39,8 @@ export default function DashboardLayout() {
     const location = useLocation();
 
     useEffect(() => {
-        const fetchCredits = async () => {
-            if (!token) {
-                console.log('[DashboardLayout] No token, skipping credits fetch');
-                return;
-            }
-            
-            try {
-                console.log('[DashboardLayout] Fetching credits...');
-                // 使用統一的 API client - 需要添加 getCredits 方法到 api.ts
-                // 暫時先不調用，避免錯誤
-                // TODO: 添加 api.getCredits() 方法
-            } catch (error) {
-                console.error('[DashboardLayout] Failed to fetch credits:', error);
-                // 靜默失敗，不影響頁面顯示
-            }
-        };
-
-        fetchCredits();
+        // TODO: 使用統一的 API client 獲取 credits
+        // 暫時禁用以避免錯誤
     }, [token, location.pathname]);
 
     const [isCollapsed, setIsCollapsed] = useState(false);

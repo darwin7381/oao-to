@@ -28,9 +28,12 @@ import AdminPayments from './pages/Admin/Payments';
 import AdminCreditsManagement from './pages/Admin/CreditsManagement';
 import AdminSettings from './pages/Admin/Settings';
 import AdminAuditLogs from './pages/Admin/AuditLogs';
+import AdminAuditLogDetail from './pages/Admin/AuditLogDetail';
 import AdminSupport from './pages/Admin/SupportTickets';
+import AdminSupportTicketDetail from './pages/Admin/SupportTicketDetail';
 import AdminPlans from './pages/Admin/PlansManagement';
 import AdminLinks from './pages/Admin/Links';
+import AdminCustomLinks from './pages/Admin/CustomLinks';
 import AdminApiKeysMonitoring from './pages/Admin/ApiKeysMonitoring';
 import AdminAnalytics from './pages/Admin/Analytics';
 // 路由結構：
@@ -149,6 +152,14 @@ function App() {
             }
           />
           <Route
+            path="/admin/links/custom"
+            element={
+              <AdminRoute>
+                <AdminCustomLinks />
+              </AdminRoute>
+            }
+          />
+          <Route
             path="/admin/api-keys"
             element={
               <AdminRoute>
@@ -205,10 +216,26 @@ function App() {
             }
           />
           <Route
+            path="/admin/audit-logs/:id"
+            element={
+              <AdminRoute>
+                <AdminAuditLogDetail />
+              </AdminRoute>
+            }
+          />
+          <Route
             path="/admin/support"
             element={
               <AdminRoute>
                 <AdminSupport />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/support/:id"
+            element={
+              <AdminRoute>
+                <AdminSupportTicketDetail />
               </AdminRoute>
             }
           />

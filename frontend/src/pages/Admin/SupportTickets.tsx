@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -8,6 +9,7 @@ import { cn } from '../../lib/utils';
 import { adminApi, type SupportTicket } from '../../lib/adminApi';
 
 export default function SupportTickets() {
+    const navigate = useNavigate();
     const { token } = useAuth();
     const [tickets, setTickets] = useState<SupportTicket[]>([]);
     const [loading, setLoading] = useState(true);
@@ -119,7 +121,13 @@ export default function SupportTickets() {
                                                 )}
                                             </div>
                                         </div>
-                                        <Button size="sm" variant="outline">View</Button>
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline"
+                                            onClick={() => navigate(`/admin/support/${ticket.id}`)}
+                                        >
+                                            View
+                                        </Button>
                                     </div>
                                 </div>
                             ))}

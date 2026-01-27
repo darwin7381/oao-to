@@ -22,7 +22,15 @@ import { Headphones, FileText } from 'lucide-react';
 
 const NAV_ITEMS = [
     { path: '/admin/analytics', label: 'Analytics', icon: TrendingUp },
-    { path: '/admin/links', label: 'Links', icon: LinkIcon },
+    { 
+        path: '/admin/links', 
+        label: 'Links', 
+        icon: LinkIcon,
+        subItems: [
+            { path: '/admin/links', label: 'Overview' },
+            { path: '/admin/links/custom', label: 'Custom Links' }
+        ]
+    },
     { path: '/admin/api-keys', label: 'API Keys', icon: Key },
     { path: '/admin/users', label: 'Users', icon: Users },
     { path: '/admin/support', label: 'Support', icon: Headphones },
@@ -37,6 +45,7 @@ export default function AdminLayout() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const location = useLocation();
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [expandedItems, setExpandedItems] = useState<string[]>(['/admin/links']);
 
     // Close mobile menu on route change
     useEffect(() => {
@@ -105,37 +114,77 @@ export default function AdminLayout() {
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 px-3 py-6 space-y-2">
+                <nav className="flex-1 px-3 py-6 space-y-1">
                     {NAV_ITEMS.map((item) => {
-                        const isActive = location.pathname === item.path;
+                        const isActive = location.pathname === item.path || 
+                                       (item.subItems && item.subItems.some(sub => location.pathname === sub.path));
+                        const isExpanded = item.subItems && expandedItems.includes(item.path);
                         const Icon = item.icon;
+                        
                         return (
-                            <Link
-                                key={item.path}
-                                to={item.path}
-                                title={isCollapsed ? item.label : undefined}
-                                className={cn(
-                                    "flex items-center gap-3 px-3 py-3 rounded-2xl transition-all duration-200 group relative overflow-hidden",
-                                    isActive
-                                        ? "text-blue-900 font-bold shadow-sm bg-blue-50/50"
-                                        : "text-gray-500 hover:text-gray-900 hover:bg-white/60",
-                                    isCollapsed && "justify-center px-0"
+                            <div key={item.path}>
+                                <Link
+                                    to={item.path}
+                                    title={isCollapsed ? item.label : undefined}
+                                    onClick={(e) => {
+                                        if (item.subItems && !isCollapsed) {
+                                            e.preventDefault();
+                                            setExpandedItems(prev => 
+                                                prev.includes(item.path) 
+                                                    ? prev.filter(p => p !== item.path)
+                                                    : [...prev, item.path]
+                                            );
+                                        }
+                                    }}
+                                    className={cn(
+                                        "flex items-center gap-3 px-3 py-3 rounded-2xl transition-all duration-200 group relative overflow-hidden",
+                                        isActive
+                                            ? "text-blue-900 font-bold shadow-sm bg-blue-50/50"
+                                            : "text-gray-500 hover:text-gray-900 hover:bg-white/60",
+                                        isCollapsed && "justify-center px-0"
+                                    )}
+                                >
+                                    {isActive && !isCollapsed && !item.subItems && (
+                                        <motion.div
+                                            layoutId="activeAdminNav"
+                                            className="absolute inset-0 bg-blue-100/50 rounded-2xl"
+                                            initial={false}
+                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                        />
+                                    )}
+                                    <Icon className={cn("w-5 h-5 relative z-10 flex-shrink-0", isActive ? "text-blue-500" : "text-gray-400 group-hover:text-gray-600")} />
+                                    {!isCollapsed && (
+                                        <span className="relative z-10 whitespace-nowrap overflow-hidden text-ellipsis flex-1">{item.label}</span>
+                                    )}
+                                    {!isCollapsed && item.subItems && (
+                                        <ChevronRight className={cn("w-4 h-4 relative z-10 transition-transform", isExpanded && "rotate-90")} />
+                                    )}
+                                    {isActive && !isCollapsed && !item.subItems && <ChevronRight className="w-4 h-4 ml-auto text-blue-400 relative z-10" />}
+                                </Link>
+                                
+                                {/* Sub Items */}
+                                {item.subItems && isExpanded && !isCollapsed && (
+                                    <div className="ml-8 mt-1 space-y-1">
+                                        {item.subItems.map((subItem) => {
+                                            const isSubActive = location.pathname === subItem.path;
+                                            return (
+                                                <Link
+                                                    key={subItem.path}
+                                                    to={subItem.path}
+                                                    className={cn(
+                                                        "block px-3 py-2 rounded-xl text-sm transition-all",
+                                                        isSubActive
+                                                            ? "bg-blue-100 text-blue-900 font-bold"
+                                                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                                    )}
+                                                >
+                                                    {subItem.label}
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
                                 )}
-                            >
-                                {isActive && !isCollapsed && (
-                                    <motion.div
-                                        layoutId="activeAdminNav"
-                                        className="absolute inset-0 bg-blue-100/50 rounded-2xl"
-                                        initial={false}
-                                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                                    />
-                                )}
-                                <Icon className={cn("w-5 h-5 relative z-10 flex-shrink-0", isActive ? "text-blue-500" : "text-gray-400 group-hover:text-gray-600")} />
-                                {!isCollapsed && (
-                                    <span className="relative z-10 whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>
-                                )}
-                                {isActive && !isCollapsed && <ChevronRight className="w-4 h-4 ml-auto text-blue-400 relative z-10" />}
-                            </Link>
+                            </div>
                         );
                     })}
                 </nav>

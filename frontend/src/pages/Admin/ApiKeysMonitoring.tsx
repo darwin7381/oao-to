@@ -253,16 +253,21 @@ export default function AdminApiKeysMonitoring() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-semibold text-gray-900">{key.name || 'Unnamed'}</span>
-                                                    {key.keyPrefix?.includes('test') && (
+                                                    {key.key_prefix?.includes('test') && (
                                                         <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs">
                                                             TEST
+                                                        </Badge>
+                                                    )}
+                                                    {key.key_prefix?.includes('live') && (
+                                                        <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">
+                                                            LIVE
                                                         </Badge>
                                                     )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <code className="text-xs font-mono text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200">
-                                                    {key.keyPrefix}...
+                                                    {key.key_prefix}...
                                                 </code>
                                             </td>
                                             <td className="px-6 py-4 text-center">
