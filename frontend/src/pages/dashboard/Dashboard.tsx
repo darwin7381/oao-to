@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { type Link as LinkType } from '../../lib/api';
+import { api, type Link as LinkType } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -27,23 +27,11 @@ export default function Dashboard() {
 
   const loadLinks = async () => {
     setLoading(true);
-    const apiUrl = import.meta.env.PROD
-      ? 'https://api.oao.to/test-list'
-      : 'http://localhost:8788/test-list';
-
-    const shortUrlBase = import.meta.env.PROD
-      ? 'https://oao.to'
-      : 'http://localhost:8787';
-
     try {
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      setLinks(data.links.map((link: any) => ({
-        ...link,
-        shortUrl: `${shortUrlBase}/${link.slug}`,
-      })));
-    } catch (error) {
-      console.error('Failed to load links:', error);
+      const data = await api.getLinks();
+      setLinks(data.links);
+    } catch (err: any) {
+      console.error('Failed to load links:', err);
     } finally {
       setLoading(false);
     }

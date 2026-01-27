@@ -6,7 +6,6 @@ import type { Env } from '../types';
 
 const auditLogs = new Hono<{ Bindings: Env }>();
 
-// 使用 requireAuth 而不是 createAuthMiddleware  
 auditLogs.use('*', requireAuth);
 
 // 獲取 Audit Logs 列表

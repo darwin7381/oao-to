@@ -84,9 +84,28 @@ class API {
     return this.request('/auth/me');
   }
 
-  // Links
+  // Links (使用者自己的連結列表)
   async getLinks(): Promise<{ links: Link[]; total: number }> {
-    return this.request('/links');
+    // 暫時使用 test-list endpoint（直接從 KV 讀取）
+    const fullUrl = import.meta.env.PROD
+      ? 'https://api.oao.to/test-list'
+      : 'http://localhost:8788/test-list';
+    
+    const response = await fetch(fullUrl);
+    if (!response.ok) {
+      throw new Error('Failed to fetch links');
+    }
+    
+    const data = await response.json();
+    const shortUrlBase = import.meta.env.PROD ? 'https://oao.to' : 'http://localhost:8787';
+    
+    return {
+      links: data.links.map((link: any) => ({
+        ...link,
+        shortUrl: `${shortUrlBase}/${link.slug}`,
+      })),
+      total: data.links.length
+    };
   }
 
   async createLink(data: { url: string; slug: string; title?: string }): Promise<Link> {
@@ -129,6 +148,40 @@ class API {
 
   async getSummary() {
     return this.request('/analytics/summary/all');
+  }
+
+  // Credits
+  async getCredits() {
+    return this.request('/account/credits');
+  }
+
+  async getTransactions(limit: number = 20) {
+    return this.request(`/account/transactions?limit=${limit}`);
+  }
+
+  // API Keys
+  async getApiKeys() {
+    return this.request('/account/keys');
+  }
+
+  async createApiKey(data: { name: string; scopes: string[] }) {
+    return this.request('/account/keys', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateApiKey(id: string, data: { name?: string; is_active?: boolean }) {
+    return this.request(`/account/keys/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteApiKey(id: string) {
+    return this.request(`/account/keys/${id}`, {
+      method: 'DELETE',
+    });
   }
 }
 

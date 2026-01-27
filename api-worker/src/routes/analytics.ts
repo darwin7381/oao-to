@@ -1,18 +1,11 @@
 // 分析 API
 
 import { Hono } from 'hono';
-import { createAuthMiddleware, getUserFromContext } from '../middleware/auth';
+import { requireAuth, getUserFromContext } from '../middleware/auth';
 import { queryAnalytics } from '../utils/analytics';
 import type { Env } from '../types';
 
 const analytics = new Hono<{ Bindings: Env }>();
-
-// 🧪 開發階段：暫時移除認證（方便測試）
-// 生產階段：需要重新啟用
-// analytics.use('*', async (c, next) => {
-//   const authMiddleware = createAuthMiddleware(c.env.JWT_SECRET);
-//   return authMiddleware(c, next);
-// });
 
 // 獲取短網址分析數據
 analytics.get('/:slug', async (c) => {

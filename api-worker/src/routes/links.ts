@@ -2,18 +2,11 @@
 // 核心邏輯複製自 shorty.dev 並改寫
 
 import { Hono } from 'hono';
-import { createAuthMiddleware, getUserFromContext } from '../middleware/auth';
+import { requireAuth, getUserFromContext } from '../middleware/auth';
 import { fetchMetadata } from '../utils/fetch-metadata';
 import type { Env, LinkData } from '../types';
 
 const links = new Hono<{ Bindings: Env }>();
-
-// 🧪 開發階段：暫時移除認證（方便測試公開創建的連結編輯）
-// 生產階段：需要重新啟用
-// links.use('*', async (c, next) => {
-//   const authMiddleware = createAuthMiddleware(c.env.JWT_SECRET);
-//   return authMiddleware(c, next);
-// });
 
 // 創建短網址
 links.post('/', async (c) => {
