@@ -47,7 +47,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             icon: "h-12 w-12",
         }
 
-        const variantStyles = variants[variant][colorScheme];
+        const variantStyles = variants[variant]?.[colorScheme] || variants.default.orange;
         const focusRing = colorScheme === 'orange' ? 'focus-visible:ring-orange-200' : 'focus-visible:ring-blue-200';
 
         return (

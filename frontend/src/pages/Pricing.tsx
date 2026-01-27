@@ -57,7 +57,7 @@ export default function Pricing() {
         'Branded QR codes',
       ],
       cta: 'Upgrade to Pro',
-      ctaVariant: 'primary' as const,
+      ctaVariant: 'default' as const,
       popular: true,
       rotate: '-rotate-1',
     },
