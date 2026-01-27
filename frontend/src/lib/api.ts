@@ -86,25 +86,10 @@ class API {
 
   // Links (使用者自己的連結列表)
   async getLinks(): Promise<{ links: Link[]; total: number }> {
-    // 暫時使用 test-list endpoint（直接從 KV 讀取）
-    const fullUrl = import.meta.env.PROD
-      ? 'https://api.oao.to/test-list'
-      : 'http://localhost:8788/test-list';
-    
-    const response = await fetch(fullUrl);
-    if (!response.ok) {
-      throw new Error('Failed to fetch links');
-    }
-    
-    const data = await response.json();
-    const shortUrlBase = import.meta.env.PROD ? 'https://oao.to' : 'http://localhost:8787';
-    
+    const data = await this.request('/links');
     return {
-      links: data.links.map((link: any) => ({
-        ...link,
-        shortUrl: `${shortUrlBase}/${link.slug}`,
-      })),
-      total: data.links.length
+      links: data.links || [],
+      total: data.total || 0
     };
   }
 

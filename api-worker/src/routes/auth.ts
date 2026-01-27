@@ -109,6 +109,29 @@ auth.get('/google/callback', async (c) => {
         Date.now()
       ).run();
 
+      // ✨ 同時創建 credits 記錄（100 credits 歡迎獎勵）
+      const now = Date.now();
+      const nextMonthStart = new Date();
+      nextMonthStart.setMonth(nextMonthStart.getMonth() + 1, 1);
+      nextMonthStart.setHours(0, 0, 0, 0);
+      
+      await c.env.DB.prepare(
+        `INSERT INTO credits (id, user_id, balance, purchased_balance, 
+         plan_type, monthly_used, monthly_reset_at, created_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        `credit_${userId}`,
+        userId,
+        100,              // 注册赠送 100 credits
+        0,                // purchased_balance = 0（赠送不算购买）
+        'free',           // monthly_quota 从 plans 表动态获取
+        0,
+        nextMonthStart.getTime(),
+        now
+      ).run();
+
+      console.log('[OAuth] Created credits record for new user:', userId);
+
       user = { 
         id: userId, 
         email: userData.email, 

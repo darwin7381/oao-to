@@ -16,21 +16,21 @@ router.get('/credits', requireAuth, async (c) => {
   
   const result = await c.env.DB.prepare(`
     SELECT 
-      balance,
-      subscription_balance,
-      purchased_balance,
-      total_purchased,
-      total_used,
-      plan_type,
-      plan_renewed_at,
-      monthly_quota,
-      monthly_used,
-      monthly_reset_at,
-      overage_limit,
-      overage_used,
-      overage_rate
-    FROM credits
-    WHERE user_id = ?
+      c.balance,
+      c.purchased_balance,
+      c.total_purchased,
+      c.total_used,
+      c.plan_type,
+      c.plan_renewed_at,
+      c.monthly_used,
+      c.monthly_reset_at,
+      c.overage_limit,
+      c.overage_used,
+      c.overage_rate,
+      COALESCE(p.monthly_credits, 100) as monthly_quota
+    FROM credits c
+    LEFT JOIN plans p ON c.plan_type = p.name
+    WHERE c.user_id = ?
   `).bind(userId).first();
   
   if (!result) {
@@ -45,7 +45,6 @@ router.get('/credits', requireAuth, async (c) => {
     data: {
       balance: {
         total: result.balance,
-        subscription: result.subscription_balance,
         purchased: result.purchased_balance,
       },
       plan: {

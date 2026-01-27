@@ -441,8 +441,9 @@ admin.get('/credits/users', requireAdmin(), async (c) => {
     const { results } = await c.env.DB.prepare(
       `SELECT u.id as user_id, u.email, u.name, 
               COALESCE(c.balance, 0) as total_credits, 
-              COALESCE(c.subscription_balance, 0) as subscription_credits,
               COALESCE(c.purchased_balance, 0) as purchased_credits,
+              COALESCE(c.monthly_quota, 100) as monthly_quota,
+              COALESCE(c.monthly_used, 0) as monthly_used,
               COALESCE(c.plan_type, 'free') as plan
        FROM users u
        LEFT JOIN credits c ON u.id = c.user_id
@@ -464,9 +465,14 @@ admin.get('/credits/transactions', requireAdmin(), async (c) => {
 
   try {
     const { results } = await c.env.DB.prepare(
-      `SELECT * FROM credit_transactions 
-       WHERE admin_id IS NOT NULL 
-       ORDER BY created_at DESC 
+      `SELECT 
+        ct.*,
+        u.email as user_email,
+        u.name as user_name
+       FROM credit_transactions ct
+       LEFT JOIN users u ON ct.user_id = u.id
+       WHERE ct.admin_id IS NOT NULL 
+       ORDER BY ct.created_at DESC 
        LIMIT ?`
     ).bind(limit).all();
 
@@ -492,20 +498,38 @@ admin.post('/credits/adjust', requireAdmin(), async (c) => {
   }
 
   try {
-    const current = await c.env.DB.prepare('SELECT balance FROM credits WHERE user_id = ?').bind(userId).first() as any;
-    if (!current) return c.json({ error: 'Not found' }, 404);
+    // ✨ 使用 ensureUserCredits 確保 credits 記錄存在
+    const { ensureUserCredits } = await import('../utils/ensure-credits');
+    const current = await ensureUserCredits(c.env.DB, userId);
     
     const oldBalance = Number(current.balance);
     const newBalance = type === 'add' ? oldBalance + amount : oldBalance - amount;
     
     if (newBalance < 0) return c.json({ error: 'Insufficient' }, 400);
     
-    await c.env.DB.prepare('UPDATE credits SET balance = ?, updated_at = ? WHERE user_id = ?').bind(newBalance, Date.now(), userId).run();
-    
-    // 記錄審計日誌（使用統一的 logAuditAction）
     const adminId = c.get('userId') as string;
     const adminEmail = c.get('userEmail') as string;
     const adminRole = c.get('userRole') as string;
+    
+    // 更新 balance
+    await c.env.DB.prepare('UPDATE credits SET balance = ?, updated_at = ? WHERE user_id = ?').bind(newBalance, Date.now(), userId).run();
+    
+    // 记录到 credit_transactions（重要！前端需要显示）
+    const transactionId = crypto.randomUUID();
+    await c.env.DB.prepare(`
+      INSERT INTO credit_transactions (
+        id, user_id, type, amount, balance_after, description, admin_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      transactionId,
+      userId,
+      type === 'add' ? 'bonus' : 'penalty',
+      type === 'add' ? amount : -amount,
+      newBalance,
+      reason,
+      adminId,
+      Date.now()
+    ).run();
     
     try {
       const { logAuditAction } = await import('../middleware/audit');

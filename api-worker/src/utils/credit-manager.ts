@@ -91,20 +91,20 @@ export async function deductCredits(
       return { success: true, balanceAfter: 0 };
     }
 
-    // 1. 獲取當前 credit 狀態
+    // 1. 獲取當前 credit 狀態（JOIN plans 獲取動態配額）
     const creditResult = await env.DB.prepare(`
       SELECT 
-        balance,
-        subscription_balance,
-        purchased_balance,
-        plan_type,
-        monthly_quota,
-        monthly_used,
-        overage_limit,
-        overage_used,
-        overage_rate
-      FROM credits
-      WHERE user_id = ?
+        c.balance,
+        c.purchased_balance,
+        c.plan_type,
+        c.monthly_used,
+        c.overage_limit,
+        c.overage_used,
+        c.overage_rate,
+        COALESCE(p.monthly_credits, 100) as monthly_quota
+      FROM credits c
+      LEFT JOIN plans p ON c.plan_type = p.name
+      WHERE c.user_id = ?
     `).bind(userId).first();
     
     if (!creditResult) {
@@ -208,31 +208,32 @@ export async function deductCredits(
       }
     }
     
-    // 5. 配額和超額都不夠，使用購買的 credits
-    if (purchasedBalance < cost) {
+    // 5. 配額和超額都不夠，使用永久 credits（Pool B）
+    const currentBalance = creditResult.balance as number;
+    
+    if (currentBalance < cost) {
       return { 
         success: false, 
-        balanceAfter: purchasedBalance, 
+        balanceAfter: currentBalance, 
         error: 'Insufficient credits' 
       };
     }
     
-    const newPurchasedBalance = purchasedBalance - cost;
-    const newTotalBalance = (creditResult.balance as number) - cost;
+    const newBalance = currentBalance - cost;
     
+    // 只扣 balance，来源追踪字段（purchased_balance 等）不变
     await env.DB.prepare(`
       UPDATE credits
       SET balance = balance - ?,
-          purchased_balance = purchased_balance - ?,
           total_used = total_used + ?,
           updated_at = ?
       WHERE user_id = ?
-    `).bind(cost, cost, cost, Date.now(), userId).run();
+    `).bind(cost, cost, Date.now(), userId).run();
     
     const transactionId = await recordTransaction(env, userId, {
       type: options.type || 'usage',
       amount: -cost,
-      balanceAfter: newTotalBalance,
+      balanceAfter: newBalance,
       description: options.description,
       apiKeyId: options.apiKeyId,
       resourceType: options.resourceType,
@@ -241,7 +242,7 @@ export async function deductCredits(
     
     return { 
       success: true, 
-      balanceAfter: newTotalBalance,
+      balanceAfter: newBalance,
       transactionId
     };
     
