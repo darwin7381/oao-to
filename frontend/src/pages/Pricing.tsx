@@ -23,6 +23,7 @@ export default function Pricing() {
   const { user, login } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
   // 定义图标和颜色映射（必须在使用前定义）
   const planIcons: Record<string, any> = {
@@ -142,6 +143,10 @@ export default function Pricing() {
     const color = planColors[p.name] || planColors.free;
     const Icon = planIcons[p.name] || Zap;
     const features = JSON.parse(p.features || '[]');
+    const price = billingPeriod === 'yearly' ? p.price_yearly : p.price_monthly;
+    const savings = billingPeriod === 'yearly' && p.price_yearly > 0 
+      ? Math.round((1 - p.price_yearly / (p.price_monthly * 12)) * 100) 
+      : 0;
     
     return {
       id: p.id,
@@ -153,9 +158,10 @@ export default function Pricing() {
       borderColor: color.border,
       hoverBorder: color.hover,
       shadowColor: 'shadow-orange-400/30',
-      price: `$${p.price_monthly}`,
-      period: p.price_monthly === 0 ? 'forever' : 'per month',
-      description: `${p.monthly_credits.toLocaleString()} credits/month`,
+      price: price === 0 ? 'Free' : `$${price}`,
+      period: price === 0 ? 'forever' : billingPeriod === 'yearly' ? 'per year' : 'per month',
+      savings,
+      description: `${p.monthly_credits.toLocaleString()} API calls/month`,
       features,
       cta: user ? 'Current Plan' : 'Get Started',
       ctaVariant: 'default' as const,
@@ -190,18 +196,39 @@ export default function Pricing() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-16"
+            className="text-center mb-12"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-orange-100 text-orange-500 rounded-full text-sm font-bold shadow-sm mb-6">
-              <Crown className="w-4 h-4" />
-              Simple, Transparent Pricing
-            </div>
-            <h1 className="text-5xl md:text-6xl font-black text-gray-800 mb-6">
-              Choose Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-400">Perfect Plan</span>
+            <h1 className="text-5xl md:text-7xl font-black text-gray-900 mb-4 tracking-tight">
+              Simple pricing that <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">scales with you</span>
             </h1>
-            <p className="text-xl text-gray-500 max-w-2xl mx-auto font-medium leading-relaxed">
-              Start for free, upgrade when you need more. No hidden fees, cancel anytime. 💰
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto font-medium mb-8">
+              Start free, upgrade when you need. All plans include API access and analytics.
             </p>
+
+            {/* Billing Toggle */}
+            <div className="inline-flex items-center gap-3 p-1.5 bg-gray-100 rounded-full">
+              <button
+                onClick={() => setBillingPeriod('monthly')}
+                className={`px-6 py-2.5 rounded-full font-bold transition-all ${
+                  billingPeriod === 'monthly'
+                    ? 'bg-white shadow-md text-gray-900'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingPeriod('yearly')}
+                className={`px-6 py-2.5 rounded-full font-bold transition-all flex items-center gap-2 ${
+                  billingPeriod === 'yearly'
+                    ? 'bg-white shadow-md text-gray-900'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Yearly
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Save 17%</span>
+              </button>
+            </div>
           </motion.div>
 
           {/* Pricing Cards */}
@@ -244,12 +271,12 @@ export default function Pricing() {
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
                       <span className="text-5xl font-black text-gray-800">{plan.price}</span>
-                      {plan.price !== 'Custom' && (
-                        <span className="text-gray-400 font-bold">/ {plan.period}</span>
-                      )}
+                      <span className="text-gray-400 font-bold">/{plan.period}</span>
                     </div>
-                    {plan.price === 'Custom' && (
-                      <p className="text-gray-400 font-bold text-sm mt-1">{plan.period}</p>
+                    {plan.savings > 0 && (
+                      <div className="mt-2 inline-block px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                        Save {plan.savings}% with yearly
+                      </div>
                     )}
                   </div>
 
