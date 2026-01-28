@@ -211,7 +211,7 @@ export default function Pricing() {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16"
           >
-            {plans.map((plan, index) => (
+            {displayPlans.map((plan, index) => (
               <motion.div
                 key={plan.name}
                 initial={{ opacity: 0, y: 50 }}
