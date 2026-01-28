@@ -29,8 +29,8 @@ export default function Header() {
             <div
                 className={cn(
                     "max-w-6xl mx-auto rounded-full",
-                    scrolled 
-                        ? "bg-white/80 backdrop-blur-md shadow-lg shadow-orange-500/5 border border-white/50 px-8 w-[calc(100%-3rem)]" 
+                    scrolled
+                        ? "bg-white/80 backdrop-blur-md shadow-lg shadow-orange-500/5 border border-white/50 px-8 w-[calc(100%-3rem)]"
                         : "bg-transparent border-transparent px-6 w-full"
                 )}
                 style={{
@@ -50,9 +50,9 @@ export default function Header() {
 
                     {/* Nav Links */}
                     <nav className="hidden md:flex items-center gap-8">
-                        <Link to="/#features" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">Features</Link>
-                        <Link to="/#pricing" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">Pricing</Link>
-                        <Link to="/#resources" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">Resources</Link>
+                        <Link to="/features" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">Features</Link>
+                        <Link to="/pricing" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">Pricing</Link>
+                        <Link to="/api" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">API</Link>
                     </nav>
 
                     <div className="flex items-center gap-4">

@@ -19,6 +19,7 @@ import LinkPreview from './pages/LinkPreview';
 import ApiKeys from './pages/dashboard/ApiKeys';
 import Credits from './pages/dashboard/Credits';
 import ApiDocs from './pages/dashboard/ApiDocs';
+import ApiPage from './pages/ApiPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -83,6 +84,7 @@ function App() {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/support" element={<Support />} />
+        <Route path="/api" element={<ApiPage />} />
         {/* Protected Pages with Dashboard Layout */}
         <Route element={<DashboardLayout />}>
           <Route
