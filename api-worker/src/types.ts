@@ -12,6 +12,15 @@ export interface Env {
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   SUPERADMIN_EMAILS?: string;  // 可選，超級管理員 emails（逗號分隔）
+  
+  // Stripe 環境變數
+  STRIPE_SECRET_KEY?: string;  // 生產環境 Stripe Secret Key
+  STRIPE_SECRET_KEY_TEST?: string;  // 測試環境 Stripe Secret Key
+  STRIPE_PUBLISHABLE_KEY?: string;  // 生產環境 Publishable Key
+  STRIPE_PUBLISHABLE_KEY_TEST?: string;  // 測試環境 Publishable Key
+  STRIPE_WEBHOOK_SECRET?: string;  // 生產環境 Webhook Secret
+  STRIPE_WEBHOOK_SECRET_TEST?: string;  // 測試環境 Webhook Secret
+  ENVIRONMENT?: string;  // 'production' | 'development'
 }
 
 export interface LinkData {
@@ -181,4 +190,107 @@ export interface CreditDeduction {
   usedQuota?: boolean;      // 是否使用了月配額
   usedOverage?: boolean;    // 是否使用了超額
   error?: string;
+}
+
+// ==========================================
+// Stripe 相關類型
+// ==========================================
+
+export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'unpaid' | 'trialing';
+export type BillingPeriod = 'monthly' | 'yearly';
+
+export interface StripeEvent {
+  id: string;
+  stripeEventId: string;
+  eventType: string;
+  processed: boolean;
+  processingStartedAt?: number;
+  processingCompletedAt?: number;
+  error?: string;
+  rawData: string;
+  createdAt: number;
+}
+
+export interface StripePriceMapping {
+  id: string;
+  planType: PlanType;
+  billingPeriod: BillingPeriod;
+  stripePriceId: string;
+  displayPrice: number;  // 前端顯示價格（分）
+  actualPrice: number;   // Stripe 實際收取價格（分）
+  isActive: boolean;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export type DiscountType = 'percentage' | 'fixed_amount' | 'credits_bonus';
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  discountType: DiscountType;
+  discountValue: number;
+  appliesToPlans?: string;  // JSON array
+  appliesToPeriods?: string;  // JSON array
+  minPurchaseAmount: number;
+  bonusCredits: number;
+  maxUses?: number;
+  currentUses: number;
+  perUserLimit: number;
+  validFrom?: number;
+  validUntil?: number;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt?: number;
+  createdBy?: string;
+}
+
+export interface PromoCodeUsage {
+  id: string;
+  promoCodeId: string;
+  userId: string;
+  discountAmount?: number;
+  creditsBonus?: number;
+  stripeSessionId?: string;
+  stripePaymentIntentId?: string;
+  stripeSubscriptionId?: string;
+  createdAt: number;
+}
+
+export interface PromoCodeValidation {
+  valid: boolean;
+  promoCode?: PromoCode;
+  discountAmount?: number;
+  bonusCredits?: number;
+  error?: string;
+}
+
+// Webhook Event Handlers
+export interface CheckoutSessionCompleted {
+  sessionId: string;
+  customerId: string;
+  subscriptionId?: string;
+  userId: string;
+  planType: PlanType;
+  billingPeriod: BillingPeriod;
+  amount: number;
+  promoCode?: string;
+  bonusCredits?: number;
+}
+
+export interface InvoicePaymentSucceeded {
+  invoiceId: string;
+  customerId: string;
+  subscriptionId: string;
+  amount: number;
+  periodEnd: number;
+}
+
+export interface SubscriptionUpdated {
+  subscriptionId: string;
+  customerId: string;
+  status: SubscriptionStatus;
+  currentPeriodEnd: number;
+  cancelAtPeriodEnd: boolean;
+  planType?: PlanType;
 }

@@ -4,29 +4,68 @@
 
 ---
 
-## 📋 文件說明
+## 📂 資料夾結構
 
-### 🚨 必讀文檔
+```
+deployments/
+├── README.md                              # 本文件
+├── 🚨 規範性文檔（根目錄）
+│   ├── DEPLOYMENT_CRITICAL_CHECKLIST.md  # 🔴 每次部署前必讀
+│   ├── PRODUCTION_DEPLOYMENT_COMPLETE_GUIDE.md
+│   ├── DEPLOYMENT_GUIDE.md
+│   ├── CLOUDFLARE_PRODUCTION_GUIDE.md
+│   └── CORS_SOLUTION_GUIDE.md
+├── 📝 records/                            # 部署記錄
+│   ├── README.md
+│   ├── DEPLOYMENT_2026-01-28_*.md
+│   ├── DEPLOYMENT_2026-01-27_*.md
+│   └── ...
+└── 🔧 hotfixes/                           # 緊急修改記錄
+    ├── README.md
+    ├── HOTFIX_2026-01-27_*.md
+    └── ...
+```
+
+---
+
+## 🚨 根目錄文檔（規範性、架構性）
+
+### 必讀文檔
 
 | 文件 | 說明 | 何時閱讀 |
 |------|------|---------|
 | **DEPLOYMENT_CRITICAL_CHECKLIST.md** | 部署關鍵注意事項清單 | 🔴 每次部署前必讀 |
 | **PRODUCTION_DEPLOYMENT_COMPLETE_GUIDE.md** | 完整部署指南 | 第一次部署或不熟悉流程時 |
+| **DEPLOYMENT_GUIDE.md** | 通用部署指南 | 快速參考 |
 
-### 📝 部署記錄
-
-| 文件 | 日期 | 說明 |
-|------|------|------|
-| DEPLOYMENT_2026-01-27_MAJOR_UPDATE.md | 2026-01-27 | Admin Portal + Database 重大更新 |
-| DEPLOYMENT_2026-01-24.md | 2026-01-24 | 前端更新 |
-| DEPLOYMENT_2026-01-23_API_PLATFORM.md | 2026-01-23 | API 平台功能 |
-
-### 📖 指南文檔
+### 技術文檔
 
 | 文件 | 說明 |
 |------|------|
-| DEPLOYMENT_GUIDE.md | 通用部署指南 |
-| FINAL_DEPLOYMENT_CHECK.md | 最終檢查清單 |
+| **CLOUDFLARE_PRODUCTION_GUIDE.md** | Cloudflare 生產環境配置指南 |
+| **CORS_SOLUTION_GUIDE.md** | CORS 配置解決方案 |
+
+---
+
+## 📝 子資料夾說明
+
+### 📁 records/ - 部署記錄
+
+存放所有正式部署的詳細記錄，按日期命名。
+
+**最新記錄**：
+- `2026-01-28`: Core Worker 更新（首頁跳轉 + 尾隨斜線修復）
+- `2026-01-27`: Admin Portal + Database 重大更新
+- `2026-01-24`: 前端更新
+- `2026-01-23`: API 平台功能
+
+→ [查看所有部署記錄](./records/)
+
+### 🔧 hotfixes/ - 緊急修改
+
+存放所有緊急修復、hotfix、問題排查記錄。
+
+→ [查看所有緊急修改](./hotfixes/)
 
 ---
 

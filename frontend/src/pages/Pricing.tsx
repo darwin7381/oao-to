@@ -7,6 +7,7 @@ import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { api } from '../lib/api';
 
 interface Plan {
   id: string;
@@ -25,6 +26,10 @@ export default function Pricing() {
   const [loading, setLoading] = useState(true);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [creditAmount, setCreditAmount] = useState(1000);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoValidation, setPromoValidation] = useState<any>(null);
+  const [userPlan, setUserPlan] = useState<string>('free');
 
   // 定义图标和颜色映射（必须在使用前定义）
   const planIcons: Record<string, any> = {
@@ -58,6 +63,85 @@ export default function Pricing() {
     };
     loadPlans();
   }, []);
+
+  // 獲取用戶當前方案
+  useEffect(() => {
+    const loadUserPlan = async () => {
+      if (!user) {
+        setUserPlan('free');
+        return;
+      }
+      
+      try {
+        const credits = await api.getCredits();
+        setUserPlan(credits.planType || 'free');
+      } catch (error) {
+        console.error('Failed to load user plan:', error);
+        setUserPlan('free');
+      }
+    };
+    loadUserPlan();
+  }, [user]);
+
+  // 判斷按鈕文字和行為
+  const getPlanAction = (planType: string) => {
+    if (!user) {
+      return { text: 'Get Started', action: 'login', variant: 'default' as const };
+    }
+
+    const planOrder = { free: 0, starter: 1, pro: 2, enterprise: 3 };
+    const currentOrder = planOrder[userPlan as keyof typeof planOrder] || 0;
+    const targetOrder = planOrder[planType as keyof typeof planOrder] || 0;
+
+    if (targetOrder === currentOrder) {
+      return { text: 'Current Plan', action: 'current', variant: 'secondary' as const };
+    } else if (targetOrder > currentOrder) {
+      return { text: 'Upgrade', action: 'upgrade', variant: 'default' as const };
+    } else {
+      return { text: 'Downgrade', action: 'downgrade', variant: 'outline' as const };
+    }
+  };
+
+  // 處理訂閱操作
+  const handlePlanAction = async (planType: string) => {
+    const action = getPlanAction(planType);
+
+    if (action.action === 'login') {
+      login();
+      return;
+    }
+
+    if (action.action === 'current') {
+      // 當前方案，不做任何事（或跳轉到 Dashboard）
+      return;
+    }
+
+    if (planType === 'free') {
+      // Free plan 不需要付款
+      alert('請前往 Dashboard 取消訂閱以降級到 Free plan');
+      return;
+    }
+
+    try {
+      setCheckoutLoading(true);
+      
+      const response = await api.createCheckoutSession({
+        planType,
+        billingPeriod,
+        promoCode: promoCode || undefined,
+      });
+
+      if (response.success && response.sessionUrl) {
+        // 重導向到 Stripe Checkout
+        window.location.href = response.sessionUrl;
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to create checkout session');
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
 
   // Fallback removed to enforce API-only source per requirements
 
@@ -114,6 +198,9 @@ export default function Pricing() {
     };
     const decor = decorativeConfig[p.name] || decorativeConfig.free;
 
+    // 根據用戶當前方案判斷按鈕文字和行為
+    const planAction = getPlanAction(p.name);
+
     return {
       id: p.id,
       name: p.display_name,
@@ -127,8 +214,9 @@ export default function Pricing() {
       period: price === 0 ? 'forever' : billingPeriod === 'yearly' ? 'per year' : 'per month',
       savings,
       features,
-      cta: 'Get Started',
-      ctaVariant: 'default' as const,
+      cta: planAction.text,
+      ctaVariant: planAction.variant,
+      isCurrent: planAction.action === 'current',
       popular: p.name === 'pro',
       shadowColor: decor.shadowColor,
       description: decor.desc,
@@ -256,14 +344,11 @@ export default function Pricing() {
                     variant={plan.ctaVariant}
                     className={`w-full h-12 rounded-xl font-bold mb-6 ${plan.popular ? 'shadow-lg ' + plan.shadowColor : ''
                       }`}
-                    onClick={() => {
-                      if (!user && plan.name === 'Free') {
-                        login();
-                      }
-                    }}
+                    onClick={() => handlePlanAction(plan.planType)}
+                    disabled={checkoutLoading || plan.isCurrent}
                     type="button"
                   >
-                    {plan.cta}
+                    {checkoutLoading ? 'Loading...' : plan.cta}
                   </Button>
 
                   <div className="space-y-3">
