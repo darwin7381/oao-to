@@ -137,8 +137,8 @@ export default function Pricing() {
     },
   ];
 
-  // 动态数据映射（在 fallbackPlans 定义后）
-  const displayPlans = plans.length > 0 ? plans.map(p => {
+  // 动态数据映射
+  const displayPlans = plans.map(p => {
     const color = planColors[p.name] || planColors.free;
     const Icon = planIcons[p.name] || Zap;
     const features = JSON.parse(p.features || '[]');
@@ -156,7 +156,7 @@ export default function Pricing() {
       price: `$${p.price_monthly}`,
       period: p.price_monthly === 0 ? 'forever' : 'per month',
       description: `${p.monthly_credits.toLocaleString()} credits/month`,
-      features: features,
+      features,
       cta: user ? 'Current Plan' : 'Get Started',
       ctaVariant: 'default' as const,
       popular: p.name === 'pro',
