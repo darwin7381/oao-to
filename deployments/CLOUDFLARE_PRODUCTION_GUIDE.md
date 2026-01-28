@@ -29,10 +29,18 @@ wrangler d1 migrations apply oao-to-db --remote  # 错误的数据库名！
 
 ### ✅ 正确做法
 ```bash
-# 后端部署
+# API Worker 部署
+cd api-worker
+wrangler deploy --env=production
+
+# Core Worker 部署（如有變更）
+cd ../core-worker
+npm run deploy:prod
+# 或
 wrangler deploy --env=production
 
 # Migration
+cd ../api-worker
 wrangler d1 migrations apply oao-to-prod --env=production --remote
 
 # 查询生产数据库

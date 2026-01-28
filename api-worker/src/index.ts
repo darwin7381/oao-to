@@ -14,6 +14,9 @@ import v1LinksRouter from './routes/v1-links';
 import auditLogsRouter from './routes/audit-logs';
 import supportRouter from './routes/support';
 import plansRouter from './routes/plans';
+import checkoutRouter from './routes/checkout';
+import stripeWebhookRouter from './routes/stripe-webhook';
+import promoCodesRouter from './routes/promo-codes';
 import type { Env, LinkData } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -22,7 +25,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.use('*', cors({
   origin: [
     'https://app.oao.to',
-    'https://819b0557.oao-to-app.pages.dev',  // Pages 預設網址（最新）
+    'https://3a0b408b.oao-to-app.pages.dev',  // Pages 預設網址（2026-01-28 更新）
     'http://localhost:5173',  // 本地開發
     'http://localhost:3000'
   ],
@@ -373,6 +376,11 @@ app.route('/api/admin/plans', plansRouter);
 // API 平台路由
 app.route('/api/account/keys', apiKeysRouter);  // API Key 管理
 app.route('/api/account', accountRouter);       // Credits 和使用統計
+
+// Stripe 支付路由
+app.route('/api/checkout', checkoutRouter);     // Checkout 和 Portal
+app.route('/api/webhook', stripeWebhookRouter); // Stripe Webhooks
+app.route('/api/promo-codes', promoCodesRouter); // 優惠碼管理
 
 // V1 Public API（需要 API Key）
 app.route('/v1/links', v1LinksRouter);          // 公開 API 端點

@@ -168,6 +168,50 @@ class API {
       method: 'DELETE',
     });
   }
+
+  // Stripe Checkout
+  async createCheckoutSession(data: {
+    planType: string;
+    billingPeriod: 'monthly' | 'yearly';
+    promoCode?: string;
+  }): Promise<{ success: boolean; sessionUrl: string; sessionId: string }> {
+    return this.request('/checkout/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async createPortalSession(): Promise<{ success: boolean; portalUrl: string }> {
+    return this.request('/checkout/portal', {
+      method: 'POST',
+    });
+  }
+
+  async getCheckoutSession(sessionId: string) {
+    return this.request(`/checkout/session/${sessionId}`);
+  }
+
+  // Promo Codes
+  async validatePromoCode(data: {
+    code: string;
+    planType?: string;
+    billingPeriod?: string;
+  }): Promise<{
+    valid: boolean;
+    promoCode?: {
+      id: string;
+      code: string;
+      discountType: string;
+      discountValue: number;
+      bonusCredits: number;
+    };
+    error?: string;
+  }> {
+    return this.request('/promo-codes/validate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export const api = new API();

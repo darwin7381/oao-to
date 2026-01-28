@@ -8,7 +8,8 @@
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
-    "hono": "^4.4.8"
+    "hono": "^4.4.8",
+    "stripe": "^17.7.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240620.0",
@@ -16,4 +17,3 @@
     "wrangler": "^3.78.12"
   }
 }
-
