@@ -153,16 +153,16 @@ export default function Pricing() {
       borderColor: color.border,
       hoverBorder: color.hover,
       shadowColor: 'shadow-orange-400/30',
-      price: p.price_monthly === 0 ? '$0' : p.price_monthly >= 100 ? 'Custom' : `$${p.price_monthly}`,
-      period: p.price_monthly === 0 ? 'forever' : p.price_monthly >= 100 ? 'contact us' : 'per month',
+      price: `$${p.price_monthly}`,
+      period: p.price_monthly === 0 ? 'forever' : 'per month',
       description: `${p.monthly_credits.toLocaleString()} credits/month`,
       features: features,
-      cta: user ? 'Current Plan' : p.price_monthly >= 100 ? 'Contact Sales' : 'Get Started',
+      cta: user ? 'Current Plan' : 'Get Started',
       ctaVariant: 'default' as const,
       popular: p.name === 'pro',
       rotate: 'rotate-0',
     };
-  }) : fallbackPlans;
+  });
 
   if (loading) {
     return (
