@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Check, Zap, Crown, Rocket, HelpCircle, TrendingUp, DollarSign } from 'lucide-react';
+import { Check, Zap, Crown, Rocket, HelpCircle, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
@@ -59,85 +59,8 @@ export default function Pricing() {
     loadPlans();
   }, []);
 
-  // Fallback 静态数据（定义在使用前）
-  const fallbackPlans = [
-    {
-      name: 'Free',
-      icon: Zap,
-      iconColor: 'text-blue-500',
-      iconBg: 'bg-blue-100',
-      borderColor: 'border-blue-100',
-      hoverBorder: 'hover:border-blue-300',
-      shadowColor: 'shadow-blue-400/20',
-      price: '$0',
-      period: 'forever',
-      description: 'Perfect for personal use and trying out',
-      features: [
-        '100 links per month',
-        'Basic analytics',
-        'QR code generation',
-        'Custom slugs',
-        'Link management dashboard',
-        'Community support',
-      ],
-      cta: 'Get Started',
-      ctaVariant: 'secondary' as const,
-      popular: false,
-      rotate: 'rotate-2',
-    },
-    {
-      name: 'Pro',
-      icon: Crown,
-      iconColor: 'text-orange-500',
-      iconBg: 'bg-orange-100',
-      borderColor: 'border-orange-200',
-      hoverBorder: 'hover:border-orange-400',
-      shadowColor: 'shadow-orange-400/30',
-      price: '$9',
-      period: 'per month',
-      description: 'For creators and small businesses',
-      features: [
-        'Unlimited links',
-        'Advanced analytics',
-        'Custom domains',
-        'Link expiration',
-        'Bulk link creation',
-        'Priority support',
-        'Team collaboration (up to 3)',
-        'Branded QR codes',
-      ],
-      cta: 'Upgrade to Pro',
-      ctaVariant: 'default' as const,
-      popular: true,
-      rotate: '-rotate-1',
-    },
-    {
-      name: 'Enterprise',
-      icon: Rocket,
-      iconColor: 'text-purple-500',
-      iconBg: 'bg-purple-100',
-      borderColor: 'border-purple-100',
-      hoverBorder: 'hover:border-purple-300',
-      shadowColor: 'shadow-purple-400/20',
-      price: 'Custom',
-      period: 'contact us',
-      description: 'For large teams and organizations',
-      features: [
-        'Everything in Pro',
-        'Unlimited team members',
-        'API access',
-        'SSO & advanced security',
-        'Custom integrations',
-        'Dedicated account manager',
-        '99.99% SLA guarantee',
-        'White-label solution',
-      ],
-      cta: 'Contact Sales',
-      ctaVariant: 'secondary' as const,
-      popular: false,
-      rotate: 'rotate-2',
-    },
-  ];
+  // Fallback removed to enforce API-only source per requirements
+
 
   // 分离 Enterprise 和其他方案
   const mainPlans = plans.filter(p => p.name !== 'enterprise');
@@ -178,10 +101,19 @@ export default function Pricing() {
     const Icon = planIcons[p.name] || Zap;
     const features = featuresMap[p.name] || [];
     const price = billingPeriod === 'yearly' ? p.price_yearly : p.price_monthly;
-    const savings = billingPeriod === 'yearly' && p.price_yearly > 0 
-      ? Math.round((1 - p.price_yearly / (p.price_monthly * 12)) * 100) 
+    const savings = billingPeriod === 'yearly' && p.price_yearly > 0
+      ? Math.round((1 - p.price_yearly / (p.price_monthly * 12)) * 100)
       : 0;
-    
+
+    // Decorative config based on plan type - REMOVED ROTATION per user request
+    const decorativeConfig: Record<string, any> = {
+      free: { shadowColor: 'shadow-blue-400/20', desc: 'Perfect for personal use' },
+      starter: { shadowColor: 'shadow-green-400/20', desc: 'For growing projects' },
+      pro: { shadowColor: 'shadow-orange-400/30', desc: 'For serious creators' },
+      enterprise: { shadowColor: 'shadow-purple-400/20', desc: 'For large organizations' }
+    };
+    const decor = decorativeConfig[p.name] || decorativeConfig.free;
+
     return {
       id: p.id,
       name: p.display_name,
@@ -198,6 +130,8 @@ export default function Pricing() {
       cta: 'Get Started',
       ctaVariant: 'default' as const,
       popular: p.name === 'pro',
+      shadowColor: decor.shadowColor,
+      description: decor.desc,
     };
   });
 
@@ -226,38 +160,44 @@ export default function Pricing() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
+            transition={{ type: "spring", stiffness: 120, damping: 20, mass: 1 }}
+            className="text-center mb-16"
           >
-            <h1 className="text-5xl md:text-7xl font-black text-gray-900 mb-4 tracking-tight">
-              Simple pricing that <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">scales with you</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-orange-100 text-orange-500 rounded-full text-sm font-bold shadow-sm mb-6 animate-bounce-slow cursor-default">
+              <Crown className="w-4 h-4 text-yellow-400 fill-current" />
+              Premium Power
+            </div>
+            <h1 className="text-5xl md:text-7xl font-black text-gray-900 mb-6 tracking-tight leading-tight">
+              Plans that <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500">sparkle with you</span> ✨
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto font-medium mb-8">
-              Start free, upgrade when you need. All plans include API access and analytics.
+            <p className="text-xl text-gray-500 max-w-3xl mx-auto font-medium mb-10 leading-relaxed">
+              Start your journey for free, upgrade when you 're ready to shine brighter.
+              <br className="hidden md:block" /> All plans include our signature "Fresh & Cute" experience.
             </p>
 
             {/* Billing Toggle */}
-            <div className="inline-flex items-center gap-3 p-1.5 bg-gray-100 rounded-full">
+            <div className="inline-flex items-center p-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-full shadow-lg shadow-orange-100/50">
               <button
                 onClick={() => setBillingPeriod('monthly')}
-                className={`px-6 py-2.5 rounded-full font-bold transition-all ${
-                  billingPeriod === 'monthly'
-                    ? 'bg-white shadow-md text-gray-900'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`px-8 py-3 rounded-full text-base font-bold transition-all duration-300 ${billingPeriod === 'monthly'
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30 scale-105'
+                  : 'text-gray-500 hover:text-orange-400 hover:bg-orange-50'
+                  }`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setBillingPeriod('yearly')}
-                className={`px-6 py-2.5 rounded-full font-bold transition-all flex items-center gap-2 ${
-                  billingPeriod === 'yearly'
-                    ? 'bg-white shadow-md text-gray-900'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`px-8 py-3 rounded-full text-base font-bold transition-all duration-300 flex items-center gap-2 ${billingPeriod === 'yearly'
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30 scale-105'
+                  : 'text-gray-500 hover:text-orange-400 hover:bg-orange-50'
+                  }`}
               >
                 Yearly
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Save 17%</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-black ${billingPeriod === 'yearly' ? 'bg-white text-orange-500' : 'bg-green-100 text-green-600'
+                  }`}>
+                  -17%
+                </span>
               </button>
             </div>
           </motion.div>
@@ -279,11 +219,12 @@ export default function Pricing() {
               >
                 <Card
                   className={`
-                    relative p-8 bg-white/80 backdrop-blur-xl border-2 
+                    relative p-8 bg-white/70 backdrop-blur-xl border-2 
                     ${plan.borderColor} ${plan.hoverBorder}
-                    ${plan.rotate} hover:rotate-0 hover:scale-105
-                    transition-all duration-300 cursor-default group h-full
-                    ${plan.popular ? 'shadow-2xl ' + plan.shadowColor : 'shadow-xl'}
+                    hover:scale-[1.02] hover:-translate-y-1
+                    transition-all duration-300 ease-out
+                    cursor-default group h-full
+                    ${plan.popular ? 'shadow-2xl ' + plan.shadowColor : 'shadow-xl hover:shadow-2xl shadow-gray-100'}
                   `}
                 >
                   {plan.popular && (
@@ -313,9 +254,8 @@ export default function Pricing() {
 
                   <Button
                     variant={plan.ctaVariant}
-                    className={`w-full h-12 rounded-xl font-bold mb-6 ${
-                      plan.popular ? 'shadow-lg ' + plan.shadowColor : ''
-                    }`}
+                    className={`w-full h-12 rounded-xl font-bold mb-6 ${plan.popular ? 'shadow-lg ' + plan.shadowColor : ''
+                      }`}
                     onClick={() => {
                       if (!user && plan.name === 'Free') {
                         login();
@@ -344,12 +284,12 @@ export default function Pricing() {
           {/* Enterprise Plan (Separate) */}
           {enterprisePlan && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
               className="max-w-5xl mx-auto mb-20"
             >
-              <Card className="!bg-white border-2 border-gray-200 p-10">
+              <Card className="!bg-white/60 backdrop-blur-xl border-2 border-purple-100 hover:border-purple-300 hover:shadow-2xl hover:shadow-purple-200/50 transition-all duration-300 p-10 group cursor-default">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                   <div className="flex items-center gap-6 flex-1">
                     <div className="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center flex-shrink-0">
@@ -377,10 +317,13 @@ export default function Pricing() {
           {/* Buy Credits with Interactive Slider */}
           <div className="mb-20">
             <div className="max-w-3xl mx-auto">
-              <Card className="p-10">
-                <div className="text-center mb-8">
-                  <h3 className="text-3xl font-black text-gray-900 mb-2">Buy Additional Credits</h3>
-                  <p className="text-gray-600">No subscription • Credits never expire</p>
+              <Card className="p-10 border-2 border-orange-100 bg-white/70 backdrop-blur-xl overflow-hidden relative">
+                {/* Decorative blob for card */}
+                <div className="absolute -right-20 -top-20 w-64 h-64 bg-orange-100/50 rounded-full blur-3xl -z-10" />
+
+                <div className="text-center mb-10">
+                  <h3 className="text-3xl font-black text-gray-800 mb-3">Need a boost? Top up credits! 🚀</h3>
+                  <p className="text-gray-500 font-medium">Pay as you go. No subscription required. Credits never expire.</p>
                 </div>
 
                 {/* Interactive Slider */}
@@ -396,7 +339,7 @@ export default function Pricing() {
                       <div className="text-4xl font-black text-orange-600">${(creditAmount / 100).toFixed(0)}</div>
                     </div>
                   </div>
-                  
+
                   <input
                     type="range"
                     min="1000"
@@ -410,7 +353,7 @@ export default function Pricing() {
                                [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:bg-orange-500 
                                [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer"
                   />
-                  
+
                   <div className="flex justify-between text-xs text-gray-400 mt-2 font-mono">
                     <span>1K</span>
                     <span>10K</span>
@@ -440,11 +383,11 @@ export default function Pricing() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
           >
-            <div className="text-center mb-12">
+            <div className="text-center mb-16">
               <h2 className="text-4xl font-black text-gray-800 mb-4">
-                Frequently Asked <span className="text-orange-500">Questions</span>
+                Curious minds <span className="text-orange-500">ask this...</span>
               </h2>
-              <p className="text-gray-500 font-medium">Got questions? We've got answers!</p>
+              <p className="text-gray-500 font-medium">Everything you need to know about billing.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -505,30 +448,33 @@ export default function Pricing() {
             transition={{ delay: 0.6, duration: 0.6 }}
             className="mt-16 text-center"
           >
-            <div className="p-12 bg-gradient-to-r from-orange-400 to-pink-500 text-white border-white/20 shadow-2xl rounded-3xl">
-              <h2 className="text-4xl md:text-5xl font-black mb-4 text-white">Still have questions?</h2>
-              <p className="text-xl text-white mb-8 font-medium">
-                Our team is here to help you find the perfect plan for your needs.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/support">
-                  <Button
-                    size="lg"
-                    variant="secondary"
-                    className="h-14 px-8 rounded-2xl text-lg font-bold bg-white text-orange-500 hover:bg-white/90 hover:scale-105 shadow-xl"
-                  >
-                    Contact Support
-                  </Button>
-                </Link>
-                {!user && (
-                  <Button
-                    size="lg"
-                    onClick={login}
-                    className="h-14 px-8 rounded-2xl text-lg font-bold bg-white/20 hover:bg-white/30 border-2 border-white/40 hover:scale-105"
-                  >
-                    Start Free Trial
-                  </Button>
-                )}
+            <div className="p-16 bg-gradient-to-br from-orange-400 to-pink-500 text-white shadow-2xl shadow-orange-500/30 rounded-[3rem] relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-full h-full bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative z-10">
+                <h2 className="text-4xl md:text-5xl font-black mb-6 text-white drop-shadow-sm">Still have questions?</h2>
+                <p className="text-xl text-orange-50 mb-10 font-bold max-w-2xl mx-auto">
+                  Our friendly team is here to help you find the perfect match.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Link to="/support">
+                    <Button
+                      size="lg"
+                      variant="secondary"
+                      className="h-14 px-8 rounded-2xl text-lg font-bold bg-white text-orange-500 hover:bg-white/90 hover:scale-105 shadow-xl"
+                    >
+                      Contact Support
+                    </Button>
+                  </Link>
+                  {!user && (
+                    <Button
+                      size="lg"
+                      onClick={login}
+                      className="h-14 px-8 rounded-2xl text-lg font-bold bg-white/20 hover:bg-white/30 border-2 border-white/40 hover:scale-105 backdrop-blur-md"
+                    >
+                      Start Free Trial
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
