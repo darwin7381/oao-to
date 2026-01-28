@@ -24,6 +24,21 @@ export default function Pricing() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 定义图标和颜色映射（必须在使用前定义）
+  const planIcons: Record<string, any> = {
+    free: Zap,
+    starter: TrendingUp,
+    pro: Crown,
+    enterprise: Rocket,
+  };
+
+  const planColors: Record<string, any> = {
+    free: { icon: 'text-blue-500', bg: 'bg-blue-100', border: 'border-blue-100', hover: 'hover:border-blue-300' },
+    starter: { icon: 'text-green-500', bg: 'bg-green-100', border: 'border-green-100', hover: 'hover:border-green-300' },
+    pro: { icon: 'text-orange-500', bg: 'bg-orange-100', border: 'border-orange-200', hover: 'hover:border-orange-400' },
+    enterprise: { icon: 'text-purple-500', bg: 'bg-purple-100', border: 'border-purple-100', hover: 'hover:border-purple-300' },
+  };
+
   useEffect(() => {
     const loadPlans = async () => {
       try {
@@ -42,55 +57,7 @@ export default function Pricing() {
     loadPlans();
   }, []);
 
-  const displayPlans = plans.length > 0 ? plans.map(p => {
-    const color = planColors[p.name] || planColors.free;
-    const Icon = planIcons[p.name] || Zap;
-    const features = JSON.parse(p.features || '[]');
-    
-    return {
-      id: p.id,
-      name: p.display_name,
-      planType: p.name,
-      icon: Icon,
-      iconColor: color.icon,
-      iconBg: color.bg,
-      borderColor: color.border,
-      hoverBorder: color.hover,
-      shadowColor: 'shadow-orange-400/30',
-      price: p.price_monthly === 0 ? '$0' : p.price_monthly >= 100 ? 'Custom' : `$${p.price_monthly}`,
-      period: p.price_monthly === 0 ? 'forever' : p.price_monthly >= 100 ? 'contact us' : 'per month',
-      description: `${p.monthly_credits.toLocaleString()} credits/month`,
-      features: features,
-      cta: user ? 'Current Plan' : p.price_monthly >= 100 ? 'Contact Sales' : 'Get Started',
-      ctaVariant: 'default' as const,
-      popular: p.name === 'pro',
-      rotate: 'rotate-0',
-    };
-  }) : fallbackPlans;
-
-  const planIcons: Record<string, any> = {
-    free: Zap,
-    starter: TrendingUp,
-    pro: Crown,
-    enterprise: Rocket,
-  };
-
-  const planColors: Record<string, any> = {
-    free: { icon: 'text-blue-500', bg: 'bg-blue-100', border: 'border-blue-100', hover: 'hover:border-blue-300' },
-    starter: { icon: 'text-green-500', bg: 'bg-green-100', border: 'border-green-100', hover: 'hover:border-green-300' },
-    pro: { icon: 'text-orange-500', bg: 'bg-orange-100', border: 'border-orange-200', hover: 'hover:border-orange-400' },
-    enterprise: { icon: 'text-purple-500', bg: 'bg-purple-100', border: 'border-purple-100', hover: 'hover:border-purple-300' },
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-400"></div>
-      </div>
-    );
-  }
-
-  // Fallback 静态数据（如果 API 失败）
+  // Fallback 静态数据（定义在使用前）
   const fallbackPlans = [
     {
       name: 'Free',
@@ -169,6 +136,41 @@ export default function Pricing() {
       rotate: 'rotate-2',
     },
   ];
+
+  // 动态数据映射（在 fallbackPlans 定义后）
+  const displayPlans = plans.length > 0 ? plans.map(p => {
+    const color = planColors[p.name] || planColors.free;
+    const Icon = planIcons[p.name] || Zap;
+    const features = JSON.parse(p.features || '[]');
+    
+    return {
+      id: p.id,
+      name: p.display_name,
+      planType: p.name,
+      icon: Icon,
+      iconColor: color.icon,
+      iconBg: color.bg,
+      borderColor: color.border,
+      hoverBorder: color.hover,
+      shadowColor: 'shadow-orange-400/30',
+      price: p.price_monthly === 0 ? '$0' : p.price_monthly >= 100 ? 'Custom' : `$${p.price_monthly}`,
+      period: p.price_monthly === 0 ? 'forever' : p.price_monthly >= 100 ? 'contact us' : 'per month',
+      description: `${p.monthly_credits.toLocaleString()} credits/month`,
+      features: features,
+      cta: user ? 'Current Plan' : p.price_monthly >= 100 ? 'Contact Sales' : 'Get Started',
+      ctaVariant: 'default' as const,
+      popular: p.name === 'pro',
+      rotate: 'rotate-0',
+    };
+  }) : fallbackPlans;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-400"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background font-nunito">
