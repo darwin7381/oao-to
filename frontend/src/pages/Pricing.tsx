@@ -24,6 +24,7 @@ export default function Pricing() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [creditAmount, setCreditAmount] = useState(1000);
 
   // 定义图标和颜色映射（必须在使用前定义）
   const planIcons: Record<string, any> = {
@@ -79,7 +80,7 @@ export default function Pricing() {
         'Link management dashboard',
         'Community support',
       ],
-      cta: user ? 'Current Plan' : 'Get Started',
+      cta: 'Get Started',
       ctaVariant: 'secondary' as const,
       popular: false,
       rotate: 'rotate-2',
@@ -138,11 +139,44 @@ export default function Pricing() {
     },
   ];
 
-  // 动态数据映射
-  const displayPlans = plans.map(p => {
+  // 分离 Enterprise 和其他方案
+  const mainPlans = plans.filter(p => p.name !== 'enterprise');
+  const enterprisePlan = plans.find(p => p.name === 'enterprise');
+
+  // 完整的 features 映射
+  const featuresMap: Record<string, string[]> = {
+    free: [
+      `${plans.find(p => p.name === 'free')?.monthly_credits || 400} API calls/month`,
+      'Basic analytics',
+      'QR code generation',
+      'Custom slugs',
+      'Link management',
+      'Community support',
+    ],
+    starter: [
+      `${plans.find(p => p.name === 'starter')?.monthly_credits || 1000} API calls/month`,
+      'Advanced analytics',
+      'Email support',
+      'Custom domains',
+      'Bulk operations',
+      '10 API keys',
+    ],
+    pro: [
+      `${plans.find(p => p.name === 'pro')?.monthly_credits || 10000} API calls/month`,
+      'Premium analytics',
+      'Priority support',
+      'Webhooks',
+      'Team collaboration',
+      '25 API keys',
+      'SLA guarantee',
+    ],
+  };
+
+  // 映射主要方案
+  const displayPlans = mainPlans.map(p => {
     const color = planColors[p.name] || planColors.free;
     const Icon = planIcons[p.name] || Zap;
-    const features = JSON.parse(p.features || '[]');
+    const features = featuresMap[p.name] || [];
     const price = billingPeriod === 'yearly' ? p.price_yearly : p.price_monthly;
     const savings = billingPeriod === 'yearly' && p.price_yearly > 0 
       ? Math.round((1 - p.price_yearly / (p.price_monthly * 12)) * 100) 
@@ -157,16 +191,13 @@ export default function Pricing() {
       iconBg: color.bg,
       borderColor: color.border,
       hoverBorder: color.hover,
-      shadowColor: 'shadow-orange-400/30',
       price: price === 0 ? 'Free' : `$${price}`,
       period: price === 0 ? 'forever' : billingPeriod === 'yearly' ? 'per year' : 'per month',
       savings,
-      description: `${p.monthly_credits.toLocaleString()} API calls/month`,
       features,
-      cta: user ? 'Current Plan' : 'Get Started',
+      cta: 'Get Started',
       ctaVariant: 'default' as const,
       popular: p.name === 'pro',
-      rotate: 'rotate-0',
     };
   });
 
@@ -231,12 +262,12 @@ export default function Pricing() {
             </div>
           </motion.div>
 
-          {/* Pricing Cards */}
+          {/* Main Pricing Cards (3 plans) */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16"
+            transition={{ delay: 0.2 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 max-w-6xl mx-auto"
           >
             {displayPlans.map((plan, index) => (
               <motion.div
@@ -310,96 +341,98 @@ export default function Pricing() {
             ))}
           </motion.div>
 
-          {/* Pay-As-You-Go Pricing */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-            className="mb-20"
-          >
-            <div className="text-center mb-12">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 border-2 border-purple-100 text-purple-600 rounded-full text-sm font-bold shadow-sm mb-4">
-                <DollarSign className="w-4 h-4" />
-                Flexible Billing
-              </div>
-              <h2 className="text-4xl font-black text-gray-800 mb-4">
-                Never run out of credits
-              </h2>
-              <p className="text-lg text-gray-500 font-medium max-w-2xl mx-auto">
-                When you use all your monthly quota, we automatically use your purchased credits. 
-                No service interruption, complete control.
-              </p>
-            </div>
-
-            <Card className="max-w-4xl mx-auto p-8 bg-gradient-to-br from-white to-gray-50 border-2 border-gray-100">
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-black text-gray-800 mb-2">How it works</h3>
-                <p className="text-gray-600 font-medium">Simple, transparent, and predictable</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl font-black text-blue-600">1</span>
-                  </div>
-                  <h4 className="font-bold text-gray-900 mb-2">Use your monthly quota</h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Every plan includes free monthly quota. Use it for your regular traffic.
-                  </p>
-                </div>
-
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl font-black text-purple-600">2</span>
-                  </div>
-                  <h4 className="font-bold text-gray-900 mb-2">Tap into purchased credits</h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    When quota runs out, we use your purchased credits automatically. No interruption.
-                  </p>
-                </div>
-
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl font-black text-green-600">3</span>
-                  </div>
-                  <h4 className="font-bold text-gray-900 mb-2">Top up anytime</h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Buy credits in advance at $10 per 1000 credits. Never expires, always available.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-100">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                    <TrendingUp className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 mb-2">Example: Growing startup</h4>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      Starter plan (1,000 free quota/month) + 500 purchased credits<br/>
-                      <span className="text-gray-500">Usage: 1,200 links created this month</span>
-                    </p>
-                    <div className="mt-3 text-sm space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-600 font-semibold">✓ First 1,000</span>
-                        <span className="text-gray-600">Free (included in $9.99 plan)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-blue-600 font-semibold">✓ Next 200</span>
-                        <span className="text-gray-600">From purchased credits (200/500 used)</span>
-                      </div>
-                      <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
-                        <span className="text-gray-900 font-bold">Total cost this month:</span>
-                        <span className="text-gray-900 font-black">$9.99</span>
-                        <span className="text-gray-500 text-xs">(no overage charges)</span>
-                      </div>
+          {/* Enterprise Plan (Separate) */}
+          {enterprisePlan && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="max-w-5xl mx-auto mb-20"
+            >
+              <Card className="!bg-white border-2 border-gray-200 p-10">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                  <div className="flex items-center gap-6 flex-1">
+                    <div className="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+                      <Rocket className="w-10 h-10 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-3xl font-black text-gray-900 mb-2">{enterprisePlan.display_name}</h3>
+                      <p className="text-lg text-gray-700 font-medium">{enterprisePlan.monthly_credits.toLocaleString()} API calls/month</p>
+                      <p className="text-gray-600 mt-1">Custom solutions • Dedicated support • SLA guarantee</p>
                     </div>
                   </div>
+                  <div className="text-center md:text-right flex-shrink-0">
+                    <div className="text-5xl font-black text-gray-900 mb-4">
+                      {enterprisePlan.price_monthly >= 1000 ? 'Custom' : `$${enterprisePlan.price_monthly}`}
+                    </div>
+                    <Button size="lg" className="font-bold px-8">
+                      Contact Sales
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </Card>
-          </motion.div>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Buy Credits with Interactive Slider */}
+          <div className="mb-20">
+            <div className="max-w-3xl mx-auto">
+              <Card className="p-10">
+                <div className="text-center mb-8">
+                  <h3 className="text-3xl font-black text-gray-900 mb-2">Buy Additional Credits</h3>
+                  <p className="text-gray-600">No subscription • Credits never expire</p>
+                </div>
+
+                {/* Interactive Slider */}
+                <div className="mb-8">
+                  <div className="flex justify-between items-end mb-6">
+                    <div>
+                      <div className="text-sm font-bold text-gray-600 mb-1">SELECT AMOUNT</div>
+                      <div className="text-4xl font-black text-gray-900">{creditAmount.toLocaleString()}</div>
+                      <div className="text-sm text-gray-500">credits</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-gray-600 mb-1">TOTAL PRICE</div>
+                      <div className="text-4xl font-black text-orange-600">${(creditAmount / 100).toFixed(0)}</div>
+                    </div>
+                  </div>
+                  
+                  <input
+                    type="range"
+                    min="1000"
+                    max="50000"
+                    step="1000"
+                    value={creditAmount}
+                    onChange={(e) => setCreditAmount(parseInt(e.target.value))}
+                    className="w-full h-3 bg-gray-200 rounded-full appearance-none cursor-pointer 
+                               [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 
+                               [&::-webkit-slider-thumb]:bg-orange-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-lg
+                               [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:bg-orange-500 
+                               [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer"
+                  />
+                  
+                  <div className="flex justify-between text-xs text-gray-400 mt-2 font-mono">
+                    <span>1K</span>
+                    <span>10K</span>
+                    <span>25K</span>
+                    <span>50K</span>
+                  </div>
+                </div>
+
+                {/* Purchase Button */}
+                <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-2xl p-6 text-center">
+                  <div className="text-sm text-gray-600 mb-4">
+                    <strong className="text-orange-600">$0.01</strong> per credit • Instant delivery • Never expires
+                  </div>
+                  <Link to="/dashboard/credits">
+                    <Button size="lg" className="w-full max-w-md">
+                      Buy {creditAmount.toLocaleString()} Credits for ${(creditAmount / 100).toFixed(0)}
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            </div>
+          </div>
 
           {/* FAQ Section */}
           <motion.div
@@ -472,9 +505,9 @@ export default function Pricing() {
             transition={{ delay: 0.6, duration: 0.6 }}
             className="mt-16 text-center"
           >
-            <Card className="p-12 bg-gradient-to-r from-orange-400 to-pink-500 text-white border-white/20 shadow-2xl">
-              <h2 className="text-4xl md:text-5xl font-black mb-4">Still have questions?</h2>
-              <p className="text-xl text-white/90 mb-8 font-medium">
+            <div className="p-12 bg-gradient-to-r from-orange-400 to-pink-500 text-white border-white/20 shadow-2xl rounded-3xl">
+              <h2 className="text-4xl md:text-5xl font-black mb-4 text-white">Still have questions?</h2>
+              <p className="text-xl text-white mb-8 font-medium">
                 Our team is here to help you find the perfect plan for your needs.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -497,7 +530,7 @@ export default function Pricing() {
                   </Button>
                 )}
               </div>
-            </Card>
+            </div>
           </motion.div>
         </div>
       </main>
