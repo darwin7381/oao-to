@@ -17,6 +17,8 @@ import Settings from './pages/dashboard/Settings';
 import Pricing from './pages/Pricing';
 import FeaturesPage from './pages/FeaturesPage';
 import Support from './pages/Support';
+import Report from './pages/Report';
+import Refund from './pages/Refund';
 import LinkPreview from './pages/LinkPreview';
 import ApiKeys from './pages/dashboard/ApiKeys';
 import Credits from './pages/dashboard/Credits';
@@ -89,6 +91,8 @@ function App() {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/support" element={<Support />} />
+        <Route path="/report" element={<Report />} />
+        <Route path="/refund" element={<Refund />} />
         <Route path="/api" element={<ApiPage />} />
         {/* Subscription Success (獨立頁面，無 Layout) */}
         <Route

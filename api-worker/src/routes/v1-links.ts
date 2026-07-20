@@ -34,7 +34,14 @@ router.post('/', requireScope('links:write'), async (c) => {
     } catch {
       return c.json({ error: 'Invalid URL format' }, 400);
     }
-    
+
+    // URL 安全檢查（在扣 credits 之前，被擋不收費）
+    const { checkUrlSafety } = await import('../utils/url-safety');
+    const safety = await checkUrlSafety(c.env, url);
+    if (!safety.safe) {
+      return c.json({ error: 'URL not allowed', message: safety.reason }, 400);
+    }
+
     // 扣除 Credits
     const deduction = await deductCredits(c.env, userId, CREDIT_COSTS.LINK_CREATE, {
       type: 'usage',

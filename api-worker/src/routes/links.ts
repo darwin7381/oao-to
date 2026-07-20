@@ -20,6 +20,13 @@ links.post('/', async (c) => {
     return c.json({ error: 'URL is required' }, 400);
   }
 
+  // URL 安全檢查（格式/協議/封鎖網域/Safe Browsing）
+  const { checkUrlSafety } = await import('../utils/url-safety');
+  const safety = await checkUrlSafety(c.env, url);
+  if (!safety.safe) {
+    return c.json({ error: safety.reason || 'URL not allowed' }, 400);
+  }
+
   // slug 可省略：省略時自動生成（修掉「dashboard 不填自訂 slug 就 400」的 bug）
   let slug: string;
   if (customSlug) {
@@ -159,12 +166,12 @@ links.put('/:slug', async (c) => {
       updatedAt: Date.now(),
     };
 
-    // 如果修改了 URL，驗證格式
+    // 如果修改了 URL，驗證格式 + 安全檢查（防止先建無害連結再改指向惡意站）
     if (updates.url) {
-      try {
-        new URL(updates.url);
-      } catch {
-        return c.json({ error: 'URL 格式不正確' }, 400);
+      const { checkUrlSafety } = await import('../utils/url-safety');
+      const safety = await checkUrlSafety(c.env, updates.url);
+      if (!safety.safe) {
+        return c.json({ error: safety.reason || 'URL not allowed' }, 400);
       }
     }
 

@@ -33,6 +33,9 @@ export interface Env {
   SES_CONFIG_SET?: string;         // var，SES configuration set 名稱（接 SNS bounce/complaint 事件）
   SES_EVENTS_TOKEN?: string;       // secret，/api/webhook/ses-events?token= 的共享密鑰
   INBOUND_TICKET_TOKEN?: string;   // secret，mailhandler 建工單 /api/support/inbound 的共享密鑰
+
+  // 濫用防護
+  SAFE_BROWSING_API_KEY?: string;  // secret，Google Safe Browsing v4 API key（未設 = 跳過該層檢查）
 }
 
 export interface LinkData {

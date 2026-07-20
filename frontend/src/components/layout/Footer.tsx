@@ -39,6 +39,7 @@ export default function Footer() {
                             <li><Link to="#" className="hover:text-orange-500 transition-colors">Blog</Link></li>
                             <li><Link to="#" className="hover:text-orange-500 transition-colors">Developers</Link></li>
                             <li><Link to="/support" className="hover:text-orange-500 transition-colors">Support</Link></li>
+                            <li><Link to="/report" className="hover:text-orange-500 transition-colors">Report Abuse</Link></li>
                             <li><Link to="#" className="hover:text-orange-500 transition-colors">Status</Link></li>
                         </ul>
                     </div>
@@ -51,6 +52,7 @@ export default function Footer() {
                             <li><Link to="#" className="hover:text-orange-500 transition-colors">Careers</Link></li>
                             <li><Link to="/privacy" className="hover:text-orange-500 transition-colors">Privacy</Link></li>
                             <li><Link to="/terms" className="hover:text-orange-500 transition-colors">Terms</Link></li>
+                            <li><Link to="/refund" className="hover:text-orange-500 transition-colors">Refund Policy</Link></li>
                         </ul>
                     </div>
                 </div>

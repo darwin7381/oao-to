@@ -872,4 +872,124 @@ admin.post('/backfill-links', requireSuperAdmin(), async (c) => {
   });
 });
 
+// ===== 濫用防護：檢舉審核 + 封鎖網域 =====
+
+// 檢舉列表（預設只看 pending）
+admin.get('/reports', requireAdmin(), async (c) => {
+  const status = c.req.query('status') || 'pending';
+  const limit = Math.min(parseInt(c.req.query('limit') || '100'), 500);
+  try {
+    const allowed = ['pending', 'reviewed', 'actioned', 'dismissed', 'all'];
+    if (!allowed.includes(status)) {
+      return c.json({ error: 'Invalid status filter' }, 400);
+    }
+    const where = status === 'all' ? '' : 'WHERE r.status = ?';
+    const stmt = c.env.DB.prepare(`
+      SELECT r.*, l.is_active AS link_is_active, l.flag_reason AS link_flag_reason
+      FROM link_reports r
+      LEFT JOIN links l ON l.slug = r.slug
+      ${where}
+      ORDER BY r.created_at DESC
+      LIMIT ?
+    `);
+    const { results } = status === 'all'
+      ? await stmt.bind(limit).all()
+      : await stmt.bind(status, limit).all();
+    return c.json({ success: true, data: { reports: results } });
+  } catch (error) {
+    console.error('Failed to fetch reports:', error);
+    return c.json({ error: 'Failed to fetch reports' }, 500);
+  }
+});
+
+// 更新檢舉狀態（reviewed / actioned / dismissed）— 實際下架連結請用 /links/:slug/flag
+admin.put('/reports/:id', requireAdmin(), async (c) => {
+  const { id } = c.req.param();
+  const { status, admin_note } = await c.req.json<{ status?: string; admin_note?: string }>();
+  const userId = c.get('userId') as string;
+  try {
+    if (!status || !['reviewed', 'actioned', 'dismissed'].includes(status)) {
+      return c.json({ error: 'status must be reviewed | actioned | dismissed' }, 400);
+    }
+    const result = await c.env.DB.prepare(`
+      UPDATE link_reports
+      SET status = ?, admin_note = ?, reviewed_at = ?, reviewed_by = ?
+      WHERE id = ?
+    `).bind(status, admin_note || null, Date.now(), userId, id).run();
+    if ((result.meta?.changes ?? 0) === 0) {
+      return c.json({ error: 'Report not found' }, 404);
+    }
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Failed to update report:', error);
+    return c.json({ error: 'Failed to update report' }, 500);
+  }
+});
+
+// 封鎖網域清單
+admin.get('/banned-domains', requireAdmin(), async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(
+      'SELECT * FROM banned_domains ORDER BY created_at DESC LIMIT 1000'
+    ).all();
+    return c.json({ success: true, data: { domains: results } });
+  } catch (error) {
+    console.error('Failed to fetch banned domains:', error);
+    return c.json({ error: 'Failed to fetch banned domains' }, 500);
+  }
+});
+
+// 新增封鎖網域（父網域封鎖涵蓋所有子網域）
+admin.post('/banned-domains', requireAdmin(), async (c) => {
+  const { domain, reason } = await c.req.json<{ domain?: string; reason?: string }>();
+  const userId = c.get('userId') as string;
+  const userEmail = c.get('userEmail') as string;
+  const userRole = c.get('userRole') as string;
+  try {
+    const normalized = (domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!/^([a-z0-9-]+\.)+[a-z]{2,}$/.test(normalized)) {
+      return c.json({ error: 'Invalid domain format' }, 400);
+    }
+    await c.env.DB.prepare(
+      'INSERT OR REPLACE INTO banned_domains (domain, reason, created_by, created_at) VALUES (?, ?, ?, ?)'
+    ).bind(normalized, reason || null, userId, Date.now()).run();
+
+    try {
+      const { logAuditAction } = await import('../middleware/audit');
+      await logAuditAction(c.env, userId, userEmail, userRole, 'ban_domain', 'domain', normalized, null, { reason }, c.req.raw);
+    } catch (auditError) {
+      console.error('[BanDomain] Failed to log audit:', auditError);
+    }
+    return c.json({ success: true, domain: normalized }, 201);
+  } catch (error) {
+    console.error('Failed to ban domain:', error);
+    return c.json({ error: 'Failed to ban domain' }, 500);
+  }
+});
+
+// 移除封鎖網域
+admin.delete('/banned-domains/:domain', requireAdmin(), async (c) => {
+  const { domain } = c.req.param();
+  const userId = c.get('userId') as string;
+  const userEmail = c.get('userEmail') as string;
+  const userRole = c.get('userRole') as string;
+  try {
+    const result = await c.env.DB.prepare('DELETE FROM banned_domains WHERE domain = ?')
+      .bind(domain.toLowerCase()).run();
+    if ((result.meta?.changes ?? 0) === 0) {
+      return c.json({ error: 'Domain not found' }, 404);
+    }
+    try {
+      const { logAuditAction } = await import('../middleware/audit');
+      await logAuditAction(c.env, userId, userEmail, userRole, 'unban_domain', 'domain', domain.toLowerCase(), null, null, c.req.raw);
+    } catch (auditError) {
+      console.error('[UnbanDomain] Failed to log audit:', auditError);
+    }
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Failed to unban domain:', error);
+    return c.json({ error: 'Failed to unban domain' }, 500);
+  }
+});
+
 export default admin;
