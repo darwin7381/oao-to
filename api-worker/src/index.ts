@@ -19,6 +19,7 @@ import stripeWebhookRouter from './routes/stripe-webhook';
 import sesEventsRouter from './routes/ses-events';
 import promoCodesRouter from './routes/promo-codes';
 import subscriptionRouter from './routes/subscription';
+import reportRouter from './routes/report';
 import type { Env, LinkData } from './types';
 
 import { ALLOWED_ORIGINS } from './config/origins';
@@ -75,6 +76,13 @@ app.post('/shorten', async (c) => {
     new URL(url);
   } catch {
     return c.json({ error: 'URL 格式不正確' }, 400);
+  }
+
+  // URL 安全檢查（協議/封鎖網域/Safe Browsing）
+  const { checkUrlSafety } = await import('./utils/url-safety');
+  const safety = await checkUrlSafety(c.env, url);
+  if (!safety.safe) {
+    return c.json({ error: safety.reason || 'URL not allowed' }, 400);
   }
 
   // 公開端點：以 IP 做 rate limit，防止匿名濫用大量灌連結
@@ -389,6 +397,7 @@ app.route('/api/webhook', stripeWebhookRouter); // Stripe Webhooks
 app.route('/api/webhook', sesEventsRouter);     // SES/SNS bounce+complaint feedback loop
 app.route('/api/promo-codes', promoCodesRouter); // 優惠碼管理
 app.route('/api/subscription', subscriptionRouter); // 訂閱狀態管理
+app.route('/api/report', reportRouter);         // 公開連結檢舉（無需登入，IP rate limit）
 
 // V1 Public API（需要 API Key）
 app.route('/v1/links', v1LinksRouter);          // 公開 API 端點

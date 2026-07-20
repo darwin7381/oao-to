@@ -25,9 +25,16 @@ id = "8f133853496a4bdfb8151a39dd251518"
 binding = "TRACKER"
 dataset = "link_clicks"
 
+# Observability（Workers Logs — 生產可觀測性，取樣 100%）
+[observability]
+enabled = true
+
 # ===== 生產環境 =====
 [env.production]
 routes = [{ pattern = "oao.to", custom_domain = true }]
+
+[env.production.observability]
+enabled = true
 
 [[env.production.kv_namespaces]]
 binding = "LINKS"

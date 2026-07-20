@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { FileText, AlertTriangle, CheckCircle, XCircle, Scale, Mail } from 'lucide-react';
+import { FileText, AlertTriangle, CheckCircle, XCircle, Scale, Mail, CreditCard } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { Card } from '../components/ui/Card';
@@ -204,11 +205,49 @@ export default function Terms() {
 
             <Card className="p-8 bg-white/60 backdrop-blur-xl border-white/60 shadow-xl">
               <div className="flex items-start gap-4 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-500 flex-shrink-0 rotate-3">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-gray-800 mb-4">6. Billing, Subscriptions & Refunds</h2>
+                  <div className="space-y-3 text-gray-600 font-medium leading-relaxed">
+                    <p><strong className="text-gray-800">Paid Plans & Credits:</strong></p>
+                    <ul className="list-disc list-inside ml-4 space-y-2">
+                      <li>Paid subscriptions are billed in advance on a monthly or yearly basis via Stripe</li>
+                      <li>Pay-as-you-go credit purchases are one-time charges, credited to your account immediately</li>
+                      <li>Prices are shown before checkout; applicable taxes may be added based on your location</li>
+                    </ul>
+                    <p className="mt-3"><strong className="text-gray-800">Auto-Renewal & Cancellation:</strong></p>
+                    <ul className="list-disc list-inside ml-4 space-y-2">
+                      <li><strong>Subscriptions renew automatically</strong> at the end of each billing period until cancelled</li>
+                      <li>You can cancel anytime from your dashboard — cancellation takes effect at the end of the current billing period, and you keep access until then</li>
+                      <li>If a renewal payment fails, we'll notify you and retry; continued non-payment downgrades your account to the Free plan</li>
+                      <li>We'll give you advance notice before any price change takes effect on your plan</li>
+                    </ul>
+                    <p className="mt-3"><strong className="text-gray-800">Refunds:</strong></p>
+                    <ul className="list-disc list-inside ml-4 space-y-2">
+                      <li>Except where required by law, payments are non-refundable and we don't provide refunds or credits for partial billing periods or unused credits</li>
+                      <li>Billing errors or duplicate charges? Contact us within 14 days and we'll make it right</li>
+                      <li>Approved refunds are returned to the original payment method; any credits granted by the refunded purchase are deducted</li>
+                    </ul>
+                    <p className="mt-3 text-sm">
+                      Full details in our{' '}
+                      <Link to="/refund" className="text-orange-500 font-bold hover:text-orange-600 transition-colors">Refund Policy</Link>.
+                      Billing questions:{' '}
+                      <a href="mailto:billing@oao.to" className="text-orange-500 font-bold hover:text-orange-600 transition-colors">billing@oao.to</a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-8 bg-white/60 backdrop-blur-xl border-white/60 shadow-xl">
+              <div className="flex items-start gap-4 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center text-yellow-600 flex-shrink-0 -rotate-3">
                   <AlertTriangle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-gray-800 mb-4">6. Disclaimers & Limitations</h2>
+                  <h2 className="text-2xl font-black text-gray-800 mb-4">7. Disclaimers & Limitations</h2>
                   <div className="space-y-3 text-gray-600 font-medium leading-relaxed">
                     <p><strong className="text-gray-800">Service "As Is":</strong></p>
                     <p>
@@ -242,7 +281,7 @@ export default function Terms() {
                   <Scale className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-gray-800 mb-4">7. Indemnification</h2>
+                  <h2 className="text-2xl font-black text-gray-800 mb-4">8. Indemnification</h2>
                   <div className="space-y-3 text-gray-600 font-medium leading-relaxed">
                     <p>
                       You agree to defend, indemnify, and hold harmless OAO.TO and its team from any claims,
@@ -265,7 +304,7 @@ export default function Terms() {
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-gray-800 mb-4">8. Governing Law</h2>
+                  <h2 className="text-2xl font-black text-gray-800 mb-4">9. Governing Law</h2>
                   <div className="space-y-3 text-gray-600 font-medium leading-relaxed">
                     <p>
                       These terms are governed by the laws of the jurisdiction where OAO.TO operates,
@@ -285,7 +324,7 @@ export default function Terms() {
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-gray-800 mb-4">9. Contact & Questions</h2>
+                  <h2 className="text-2xl font-black text-gray-800 mb-4">10. Contact & Questions</h2>
                   <div className="space-y-3 text-gray-600 font-medium leading-relaxed">
                     <p>Questions about these terms? Concerns about content? We're here to help!</p>
                     <div className="mt-4 p-4 bg-orange-50 rounded-2xl border-2 border-orange-100">
