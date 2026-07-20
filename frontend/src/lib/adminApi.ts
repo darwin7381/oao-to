@@ -405,6 +405,59 @@ class AdminAPI {
   async getPlanHistory(id: string): Promise<{ data: { history: PlanHistory[] } }> {
     return this.request<{ data: { history: PlanHistory[] } }>(`/plans/${id}/history`);
   }
+
+  // ==================== Abuse Reports & Banned Domains ====================
+
+  async getReports(status: string = 'pending', limit: number = 100): Promise<{ data: { reports: LinkReport[] } }> {
+    return this.request<{ data: { reports: LinkReport[] } }>(`/reports?status=${status}&limit=${limit}`);
+  }
+
+  async updateReport(id: string, data: { status: 'reviewed' | 'actioned' | 'dismissed'; admin_note?: string }): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/reports/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getBannedDomains(): Promise<{ data: { domains: BannedDomain[] } }> {
+    return this.request<{ data: { domains: BannedDomain[] } }>('/banned-domains');
+  }
+
+  async banDomain(domain: string, reason?: string): Promise<{ success: boolean; domain: string }> {
+    return this.request<{ success: boolean; domain: string }>('/banned-domains', {
+      method: 'POST',
+      body: JSON.stringify({ domain, reason }),
+    });
+  }
+
+  async unbanDomain(domain: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/banned-domains/${encodeURIComponent(domain)}`, {
+      method: 'DELETE',
+    });
+  }
+}
+
+export interface LinkReport {
+  id: string;
+  slug: string;
+  url: string | null;
+  reason: string;
+  details: string | null;
+  reporter_email: string | null;
+  status: 'pending' | 'reviewed' | 'actioned' | 'dismissed';
+  admin_note: string | null;
+  created_at: number;
+  reviewed_at: number | null;
+  reviewed_by: string | null;
+  link_is_active: number | null;
+  link_flag_reason: string | null;
+}
+
+export interface BannedDomain {
+  domain: string;
+  reason: string | null;
+  created_by: string | null;
+  created_at: number;
 }
 
 export const adminApi = new AdminAPI();
