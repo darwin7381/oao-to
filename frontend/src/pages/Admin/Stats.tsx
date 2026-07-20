@@ -7,9 +7,7 @@ import {
     TrendingUp,
     Activity,
     DollarSign,
-    Zap,
-    Globe,
-    BarChart3
+    Zap
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
@@ -108,7 +106,37 @@ export default function AdminStats() {
         );
     }
 
-    const displayStats = stats;
+    // 對後端回應做深層防禦性預設，任何缺欄位都不會 crash（原本直接存取 undefined.toLocaleString 會整頁爆炸）
+    const s = (stats ?? {}) as any;
+    const displayStats: SystemStats = {
+        users: {
+            total: s.users?.total ?? s.totalUsers ?? 0,
+            active: s.users?.active ?? 0,
+            new_today: s.users?.new_today ?? 0,
+            new_this_week: s.users?.new_this_week ?? 0,
+        },
+        links: {
+            total: s.links?.total ?? s.totalLinks ?? 0,
+            created_today: s.links?.created_today ?? 0,
+            created_this_week: s.links?.created_this_week ?? 0,
+            total_clicks: s.links?.total_clicks ?? 0,
+        },
+        revenue: {
+            total: s.revenue?.total ?? 0,
+            this_month: s.revenue?.this_month ?? 0,
+            this_week: s.revenue?.this_week ?? 0,
+        },
+        credits: {
+            total_issued: s.credits?.total_issued ?? 0,
+            total_used: s.credits?.total_used ?? 0,
+            total_remaining: s.credits?.total_remaining ?? 0,
+        },
+        api: {
+            total_requests: s.api?.total_requests ?? 0,
+            requests_today: s.api?.requests_today ?? 0,
+            avg_response_time: s.api?.avg_response_time ?? null, // null = 未量測，顯示 N/A
+        },
+    };
 
     const StatsCard = ({ title, value, subtext, icon: Icon, colorClass, delay }: any) => (
         <motion.div
@@ -177,7 +205,7 @@ export default function AdminStats() {
                 />
                 <StatsCard
                     title="API Health"
-                    value={`${displayStats.api.avg_response_time}ms`}
+                    value={displayStats.api.avg_response_time == null ? 'N/A' : `${displayStats.api.avg_response_time}ms`}
                     subtext="Avg Latency"
                     icon={Zap}
                     colorClass="bg-orange-500"

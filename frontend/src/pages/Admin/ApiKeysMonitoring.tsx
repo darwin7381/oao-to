@@ -12,10 +12,7 @@ import {
     AlertTriangle,
     Activity,
     User,
-    Calendar,
-    TrendingUp,
     Zap,
-    Shield,
     XCircle,
     CheckCircle,
     Download
@@ -28,7 +25,7 @@ export default function AdminApiKeysMonitoring() {
     const { token } = useAuth();
     const [apiKeys, setApiKeys] = useState<AdminApiKey[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedKey, setSelectedKey] = useState<AdminApiKey | null>(null);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -85,9 +82,35 @@ export default function AdminApiKeysMonitoring() {
         );
     });
 
-    const totalRequests = displayKeys.reduce((sum, key) => sum + (key.totalRequests || 0), 0);
-    const activeKeys = displayKeys.filter(k => k.is_active).length;
-    const suspiciousKeys = displayKeys.filter(k => ((k.errorRate || 0) > 20 || (k.rateLimitHits || 0) > 100)).length;
+    const handleExportCsv = () => {
+        const headers = ['ID', 'User Email', 'Key Name', 'Prefix', 'Scopes', 'Total Requests', 'Status', 'Last Used', 'Created'];
+        const rows = filteredKeys.map((k) => [
+            k.id,
+            k.user_email || '',
+            k.name || '',
+            k.key_prefix || '',
+            (k.scopes || '').replace(/,/g, ' '),
+            String(k.total_requests ?? 0),
+            k.is_active === 1 ? 'Active' : 'Revoked',
+            k.last_used_at ? new Date(k.last_used_at).toISOString() : '',
+            k.created_at ? new Date(k.created_at).toISOString() : '',
+        ]);
+        const csv = [headers, ...rows]
+            .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `api-keys-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    // 只有 total_requests 是後端真實欄位；requests_today / rate_limit_hits / error_rate 不存在，
+    // 因此不計算「今日請求」「可疑金鑰」等假指標，改為誠實顯示 N/A。
+    const totalRequests = displayKeys.reduce((sum, key) => sum + (key.total_requests || 0), 0);
+    const activeKeys = displayKeys.filter(k => k.is_active === 1).length;
 
     if (loading) {
         return (
@@ -132,7 +155,7 @@ export default function AdminApiKeysMonitoring() {
                             <Zap className="w-5 h-5 text-purple-500" />
                         </div>
                         <div className="text-3xl font-black text-gray-900">
-                            {(totalRequests / 1000).toFixed(1)}K
+                            {totalRequests.toLocaleString()}
                         </div>
                         <div className="text-xs text-gray-500 mt-1 font-semibold">
                             All time
@@ -143,11 +166,11 @@ export default function AdminApiKeysMonitoring() {
                 <Card className="bg-white border-0 shadow-lg hover:shadow-xl transition-shadow">
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-gray-600 font-semibold">Today's Requests</span>
+                            <span className="text-sm text-gray-600 font-semibold">Active Keys</span>
                             <Activity className="w-5 h-5 text-green-500" />
                         </div>
                         <div className="text-3xl font-black text-gray-900">
-                            {(displayKeys || []).reduce((sum, k) => sum + (k.requestsToday || 0), 0).toLocaleString()}
+                            {activeKeys}
                         </div>
                     </CardContent>
                 </Card>
@@ -155,14 +178,14 @@ export default function AdminApiKeysMonitoring() {
                 <Card className="bg-white border-0 shadow-lg hover:shadow-xl transition-shadow">
                     <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-gray-600 font-semibold">Suspicious</span>
-                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            <span className="text-sm text-gray-600 font-semibold">Revoked Keys</span>
+                            <Ban className="w-5 h-5 text-gray-500" />
                         </div>
-                        <div className="text-3xl font-black text-red-600">
-                            {suspiciousKeys}
+                        <div className="text-3xl font-black text-gray-900">
+                            {displayKeys.length - activeKeys}
                         </div>
-                        <div className="text-xs text-red-500 mt-1 font-semibold">
-                            Needs attention
+                        <div className="text-xs text-gray-500 mt-1 font-semibold">
+                            Inactive
                         </div>
                     </CardContent>
                 </Card>
@@ -182,7 +205,7 @@ export default function AdminApiKeysMonitoring() {
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
-                        <Button variant="outline" className="border-gray-200">
+                        <Button variant="outline" className="border-gray-200" onClick={handleExportCsv} disabled={filteredKeys.length === 0}>
                             <Download className="w-4 h-4 mr-2" />
                             Export
                         </Button>
@@ -216,10 +239,7 @@ export default function AdminApiKeysMonitoring() {
                                         Requests
                                     </th>
                                     <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                        Rate Hits
-                                    </th>
-                                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                        Error Rate
+                                        Last Used
                                     </th>
                                     <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
                                         Status
@@ -231,18 +251,13 @@ export default function AdminApiKeysMonitoring() {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {filteredKeys.map((key, index) => {
-                                    const isSuspicious = (key.errorRate || 0) > 20 || (key.rateLimitHits || 0) > 100;
-                                    
                                     return (
                                         <motion.tr
                                             key={key.id}
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             transition={{ delay: index * 0.03 }}
-                                            className={cn(
-                                                "hover:bg-blue-50/30 transition-colors",
-                                                isSuspicious && "bg-red-50/30"
-                                            )}
+                                            className="hover:bg-blue-50/30 transition-colors"
                                         >
                                             <td className="px-6 py-4">
                                                 <div className="text-sm">
@@ -272,31 +287,18 @@ export default function AdminApiKeysMonitoring() {
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <div className="font-bold text-gray-900">
-                                                    {(key.totalRequests || 0).toLocaleString()}
-                                                </div>
-                                                <div className="text-xs text-gray-500 font-semibold">
-                                                    +{key.requestsToday} today
+                                                    {(key.total_requests ?? 0).toLocaleString()}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <div className={cn(
-                                                    "font-bold",
-                                                    (key.rateLimitHits || 0) > 100 ? "text-red-600" : "text-gray-900"
-                                                )}>
-                                                    {key.rateLimitHits || 0}
+                                                <div className="text-sm text-gray-600 font-medium">
+                                                    {key.last_used_at
+                                                        ? new Date(key.last_used_at).toLocaleDateString()
+                                                        : 'Never'}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <div className={cn(
-                                                    "font-bold",
-                                                    (key.errorRate || 0) > 20 ? "text-red-600" :
-                                                    (key.errorRate || 0) > 10 ? "text-yellow-600" : "text-green-600"
-                                                )}>
-                                                    {(key.errorRate || 0).toFixed(1)}%
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                {key.isActive ? (
+                                                {key.is_active === 1 ? (
                                                     <Badge className="bg-green-100 text-green-700 border-green-200">
                                                         <CheckCircle className="w-3 h-3 mr-1" />
                                                         Active
@@ -305,12 +307,6 @@ export default function AdminApiKeysMonitoring() {
                                                     <Badge className="bg-gray-100 text-gray-700 border-gray-200">
                                                         <XCircle className="w-3 h-3 mr-1" />
                                                         Revoked
-                                                    </Badge>
-                                                )}
-                                                {isSuspicious && (
-                                                    <Badge className="bg-red-100 text-red-700 border-red-200 ml-1">
-                                                        <AlertTriangle className="w-3 h-3 mr-1" />
-                                                        Alert
                                                     </Badge>
                                                 )}
                                             </td>
@@ -327,7 +323,7 @@ export default function AdminApiKeysMonitoring() {
                                                     >
                                                         Details
                                                     </Button>
-                                                    {key.isActive && (
+                                                    {key.is_active === 1 && (
                                                         <Button
                                                             size="sm"
                                                             variant="ghost"
@@ -364,12 +360,12 @@ export default function AdminApiKeysMonitoring() {
                                     <Key className="w-5 h-5 text-blue-600" />
                                     <span className="font-bold text-blue-900">{selectedKey.name}</span>
                                 </div>
-                                <Badge className={(selectedKey.keyPrefix?.includes('live')) ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}>
-                                    {selectedKey.keyPrefix?.includes('live') ? 'LIVE' : 'TEST'}
+                                <Badge className={(selectedKey.key_prefix?.includes('live')) ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'}>
+                                    {selectedKey.key_prefix?.includes('live') ? 'LIVE' : 'TEST'}
                                 </Badge>
                             </div>
                             <code className="text-xs font-mono text-gray-600 block bg-white px-3 py-2 rounded border border-blue-200">
-                                {selectedKey.keyPrefix}••••••••••••••••
+                                {selectedKey.key_prefix}••••••••••••••••
                             </code>
                         </div>
 
@@ -377,31 +373,30 @@ export default function AdminApiKeysMonitoring() {
                             <div className="p-4 bg-gray-50 rounded-xl">
                                 <div className="text-xs text-gray-500 mb-1 font-semibold">Total Requests</div>
                                 <div className="text-2xl font-bold text-gray-900">
-                                    {(selectedKey.totalRequests || 0).toLocaleString()}
+                                    {(selectedKey.total_requests ?? 0).toLocaleString()}
                                 </div>
                             </div>
                             <div className="p-4 bg-gray-50 rounded-xl">
-                                <div className="text-xs text-gray-500 mb-1 font-semibold">Today</div>
+                                <div className="text-xs text-gray-500 mb-1 font-semibold">Last Used</div>
                                 <div className="text-2xl font-bold text-blue-600">
-                                    {(selectedKey.requestsToday || 0).toLocaleString()}
+                                    {selectedKey.last_used_at
+                                        ? new Date(selectedKey.last_used_at).toLocaleDateString()
+                                        : 'Never'}
                                 </div>
                             </div>
                             <div className="p-4 bg-gray-50 rounded-xl">
-                                <div className="text-xs text-gray-500 mb-1 font-semibold">Rate Limit Hits</div>
-                                <div className={cn(
-                                    "text-2xl font-bold",
-                                    (selectedKey.rateLimitHits || 0) > 100 ? "text-red-600" : "text-gray-900"
-                                )}>
-                                    {selectedKey.rateLimitHits || 0}
+                                <div className="text-xs text-gray-500 mb-1 font-semibold">Rate Limit (min/day)</div>
+                                <div className="text-2xl font-bold text-gray-900">
+                                    {selectedKey.rate_limit_per_minute ?? '—'} / {selectedKey.rate_limit_per_day ?? '—'}
                                 </div>
                             </div>
                             <div className="p-4 bg-gray-50 rounded-xl">
-                                <div className="text-xs text-gray-500 mb-1 font-semibold">Error Rate</div>
+                                <div className="text-xs text-gray-500 mb-1 font-semibold">Status</div>
                                 <div className={cn(
                                     "text-2xl font-bold",
-                                    (selectedKey.errorRate || 0) > 20 ? "text-red-600" : "text-green-600"
+                                    selectedKey.is_active === 1 ? "text-green-600" : "text-gray-500"
                                 )}>
-                                    {(selectedKey.errorRate || 0).toFixed(1)}%
+                                    {selectedKey.is_active === 1 ? 'Active' : 'Revoked'}
                                 </div>
                             </div>
                         </div>
@@ -425,18 +420,6 @@ export default function AdminApiKeysMonitoring() {
                             </div>
                         </div>
 
-                        {(selectedKey.errorRate || 0) > 20 && (
-                            <div className="p-4 bg-red-50 rounded-xl border-2 border-red-200">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <AlertTriangle className="w-5 h-5 text-red-600" />
-                                    <span className="font-bold text-red-900">High Error Rate Detected</span>
-                                </div>
-                                <p className="text-sm text-red-700">
-                                    This key has an unusually high error rate. Consider investigating for abuse.
-                                </p>
-                            </div>
-                        )}
-
                         <div className="flex gap-3 pt-4 border-t border-gray-200">
                             <Button
                                 variant="outline"
@@ -445,7 +428,7 @@ export default function AdminApiKeysMonitoring() {
                             >
                                 Close
                             </Button>
-                            {selectedKey.isActive && (
+                            {selectedKey.is_active === 1 && (
                                 <Button
                                     variant="destructive"
                                     onClick={() => {
@@ -484,7 +467,7 @@ export default function AdminApiKeysMonitoring() {
                         <div className="p-4 bg-gray-50 rounded-xl">
                             <div className="text-xs text-gray-500 mb-2">Key to revoke:</div>
                             <code className="text-sm font-mono text-gray-900 font-bold">
-                                {selectedKey.keyPrefix}...
+                                {selectedKey.key_prefix}...
                             </code>
                             <div className="text-xs text-gray-500 mt-2">
                                 Owner: {selectedKey.user_email}

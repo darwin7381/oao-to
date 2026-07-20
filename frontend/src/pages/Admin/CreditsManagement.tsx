@@ -24,7 +24,7 @@ export default function AdminCreditsManagement() {
     const [users, setUsers] = useState<UserCredit[]>([]);
     const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showAdjustModal, setShowAdjustModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserCredit | null>(null);
@@ -92,6 +92,16 @@ export default function AdminCreditsManagement() {
         (user.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // Recent Adjustments 也跟著搜尋框過濾（比對交易的 user_email / user_name）
+    const filteredTransactions = (displayTransactions || []).filter(tx => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            (tx.user_email || '').toLowerCase().includes(q) ||
+            (tx.user_name || '').toLowerCase().includes(q)
+        );
+    });
+
     const totalCredits = (displayUsers || []).reduce((sum, user) => sum + (user.total_credits || 0), 0);
 
     if (loading) {
@@ -135,7 +145,7 @@ export default function AdminCreditsManagement() {
 
                 <StatsCard
                     title="Recent Adjustments"
-                    value={displayTransactions.filter(t => t.admin_id).length.toString()}
+                    value={filteredTransactions.filter(t => t.admin_id).length.toString()}
                     subtext="Admin actions"
                     icon={RefreshCw}
                     color="blue"
@@ -256,7 +266,12 @@ export default function AdminCreditsManagement() {
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-3">
-                        {displayTransactions.slice(0, 10).map((tx) => (
+                        {filteredTransactions.length === 0 && (
+                            <div className="text-center py-8 text-gray-400 text-sm">
+                                {searchQuery.trim() ? 'No adjustments match this search.' : 'No recent adjustments.'}
+                            </div>
+                        )}
+                        {filteredTransactions.slice(0, 10).map((tx) => (
                             <div
                                 key={tx.id}
                                 className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200"

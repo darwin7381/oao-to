@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import UserMenu from '../UserMenu';
+import LanguageSwitcher from '../LanguageSwitcher';
 import { cn } from '../../lib/utils';
 import { useState, useEffect } from 'react';
 
 export default function Header() {
+    const { t } = useTranslation();
     const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
@@ -50,12 +53,13 @@ export default function Header() {
 
                     {/* Nav Links */}
                     <nav className="hidden md:flex items-center gap-8">
-                        <Link to="/features" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">Features</Link>
-                        <Link to="/pricing" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">Pricing</Link>
-                        <Link to="/api" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">API</Link>
+                        <Link to="/features" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">{t('nav.features')}</Link>
+                        <Link to="/pricing" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">{t('nav.pricing')}</Link>
+                        <Link to="/api" className="text-gray-600 font-bold hover:text-orange-500 transition-colors">{t('nav.api')}</Link>
                     </nav>
 
                     <div className="flex items-center gap-4">
+                        <LanguageSwitcher compact />
                         <UserMenu />
                     </div>
                 </div>

@@ -1,7 +1,39 @@
 # 常見問題檢查清單
 
 **目的**: 開發前快速檢查，避免常見錯誤  
-**使用時機**: 創建新組件、新 API、新功能前
+**使用時機**: 創建新組件、新 API、新功能前  
+**重要性**: ⭐⭐⭐⭐⭐ 必讀文件
+
+---
+
+## 🚨 P0-CRITICAL - 資料庫路徑（必須首先檢查）
+
+### ❌ D1 Migration 路徑錯誤（2026-01-29 嚴重教訓）
+
+**症狀**：
+- Migration 執行成功，但 Worker 報錯 "no such column"
+- 用戶數據消失或回到初始狀態
+- `wrangler d1 execute` 看到表，但 API 看不到
+
+**根本原因**：
+```bash
+# Worker 使用共享路徑
+wrangler dev --persist-to ../.wrangler/oao-shared
+
+# Migration 沒有用相同路徑
+wrangler d1 migrations apply DB --local  # ❌ 創建不同的資料庫！
+```
+
+**正確做法**：
+```bash
+cd api-worker
+wrangler d1 migrations apply oao-to-db --local --persist-to ../.wrangler/oao-shared
+```
+
+**預防措施**：
+- ✅ 每次執行 Migration 前檢查 Worker 啟動命令
+- ✅ 使用 `start-dev.sh` 腳本統一管理
+- ✅ 參考：`/START_DEV.md`, `/api-worker/migrations/README.md`
 
 ---
 

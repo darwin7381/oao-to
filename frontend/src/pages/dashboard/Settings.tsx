@@ -1,35 +1,14 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Bell, Shield, Mail, AlertTriangle, Globe, Smartphone, Lock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Modal } from '../../components/ui/Modal';
-import { cn } from '../../lib/utils';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
 
 export default function Settings() {
-  const { user, logout } = useAuth();
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-
-  // Form State
-  const [emailNotifs, setEmailNotifs] = useState(true);
-  const [marketingEmails, setMarketingEmails] = useState(false);
-  const [securityAlerts, setSecurityAlerts] = useState(true);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate API
-    setIsSaving(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-  };
-
-  const handleDeleteAccount = () => {
-    setShowDeleteModal(false);
-    logout();
-  };
+  const { user } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <div className="w-full max-w-[1600px] mx-auto space-y-8">
@@ -114,21 +93,52 @@ export default function Settings() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 rounded-2xl border border-gray-100 hover:border-green-200 hover:bg-green-50/30 transition-all group cursor-pointer">
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noreferrer"
+                className="block p-4 rounded-2xl border border-gray-100 hover:border-green-200 hover:bg-green-50/30 transition-all group cursor-pointer"
+              >
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-bold text-gray-700 group-hover:text-green-700">Privacy Policy</span>
                   <Globe className="w-4 h-4 text-gray-400 group-hover:text-green-500" />
                 </div>
                 <p className="text-xs text-gray-400">Read how we treat your data.</p>
-              </div>
+              </a>
 
-              <div className="p-4 rounded-2xl border border-gray-100 hover:border-green-200 hover:bg-green-50/30 transition-all group cursor-pointer">
+              <div className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50 opacity-70">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-gray-700 group-hover:text-green-700">Export Data</span>
-                  <Mail className="w-4 h-4 text-gray-400 group-hover:text-green-500" />
+                  <span className="font-bold text-gray-700 flex items-center gap-2">
+                    Export Data
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-500">Coming Soon</span>
+                  </span>
+                  <Mail className="w-4 h-4 text-gray-400" />
                 </div>
                 <p className="text-xs text-gray-400">Download a copy of your links.</p>
               </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Col: Language（全站 + email 共用偏好，存 users.locale） */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="h-full"
+        >
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <div className="p-2 bg-blue-50 rounded-xl text-blue-500">
+                  <Globe className="w-5 h-5" />
+                </div>
+                {t('settings.language')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <LanguageSwitcher />
+              <p className="text-xs text-gray-400">{t('settings.languageHint')}</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -147,35 +157,29 @@ export default function Settings() {
                   <Bell className="w-5 h-5" />
                 </div>
                 Notifications
+                <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-500">Coming Soon</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Toggles */}
-              <div className="space-y-4">
+              {/* Toggles — 後端尚未提供偏好設定端點，暫時停用以免造成「已儲存」的假象 */}
+              <div className="space-y-4 opacity-60 pointer-events-none">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-bold text-gray-700">Security Alerts</label>
-                  <input type="checkbox" checked={securityAlerts} onChange={e => setSecurityAlerts(e.target.checked)} className="accent-purple-500 w-5 h-5" />
+                  <input type="checkbox" checked disabled className="accent-purple-500 w-5 h-5" />
                 </div>
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-bold text-gray-700">Product Updates</label>
-                  <input type="checkbox" checked={marketingEmails} onChange={e => setMarketingEmails(e.target.checked)} className="accent-purple-500 w-5 h-5" />
+                  <input type="checkbox" disabled className="accent-purple-500 w-5 h-5" />
                 </div>
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-bold text-gray-700">Weekly Reports</label>
-                  <input type="checkbox" checked={emailNotifs} onChange={e => setEmailNotifs(e.target.checked)} className="accent-purple-500 w-5 h-5" />
+                  <input type="checkbox" checked disabled className="accent-purple-500 w-5 h-5" />
                 </div>
               </div>
 
-              <Button
-                onClick={handleSave}
-                disabled={isSaving}
-                className={cn(
-                  "w-full rounded-2xl font-bold h-12 shadow-lg",
-                  saveSuccess ? "bg-green-500 hover:bg-green-600" : "bg-gray-900 hover:bg-black"
-                )}
-              >
-                {isSaving ? "Saving..." : saveSuccess ? "Saved!" : "Save Changes"}
-              </Button>
+              <p className="text-xs text-gray-400 text-center">
+                Notification preferences are coming soon.
+              </p>
             </CardContent>
           </Card>
         </motion.div>
@@ -234,51 +238,18 @@ export default function Settings() {
               </p>
               <Button
                 variant="destructive"
-                onClick={() => setShowDeleteModal(true)}
-                className="w-full bg-white border-2 border-red-100 text-red-600 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all font-bold"
+                disabled
+                title="Account deletion is not available yet"
+                className="w-full bg-white border-2 border-red-100 text-red-400 font-bold cursor-not-allowed opacity-70"
               >
                 Delete Account
+                <span className="ml-2 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-red-100 text-red-500">Coming Soon</span>
               </Button>
             </CardContent>
           </Card>
         </motion.div>
 
       </div>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        title="Delete Account?"
-      >
-        <div className="space-y-4">
-          <div className="p-4 bg-red-50 rounded-2xl border-2 border-red-100 flex gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-red-900 font-bold">This is permanent</p>
-              <p className="text-red-700 text-sm">
-                All your data will be wiped immediately. You cannot recover this account.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <Button
-              variant="secondary"
-              onClick={() => setShowDeleteModal(false)}
-              className="flex-1 h-12 rounded-xl font-bold"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDeleteAccount}
-              className="flex-1 h-12 rounded-xl font-bold bg-red-500 hover:bg-red-600 text-white"
-            >
-              Yes, Delete
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
     </div>
   );

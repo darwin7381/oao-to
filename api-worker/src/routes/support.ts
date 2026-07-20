@@ -170,4 +170,221 @@ support.post('/tickets/:id/reply', requireAdmin(), async (c) => {
   }
 });
 
+// ==========================================
+// 用戶端 Support 路由（掛在 /api/support，只能操作自己的工單）
+// ==========================================
+
+const VALID_CATEGORIES = ['billing', 'technical', 'abuse', 'feature_request', 'other'];
+const MAX_OPEN_TICKETS_PER_USER = 10;
+
+export const userSupport = new Hono<{ Bindings: Env }>();
+
+userSupport.use('*', requireAuth);
+
+// 建立工單
+userSupport.post('/tickets', async (c) => {
+  const userId = c.get('userId') as string;
+
+  try {
+    const body = await c.req.json();
+    const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
+    const message = typeof body.message === 'string' ? body.message.trim() : '';
+    const category = VALID_CATEGORIES.includes(body.category) ? body.category : 'other';
+
+    if (!subject || !message) {
+      return c.json({ error: 'Subject and message are required' }, 400);
+    }
+    if (subject.length > 200) {
+      return c.json({ error: 'Subject must be less than 200 characters' }, 400);
+    }
+    if (message.length > 5000) {
+      return c.json({ error: 'Message must be less than 5000 characters' }, 400);
+    }
+
+    // 防灌單：同用戶未結案工單上限
+    const openCount = await c.env.DB.prepare(`
+      SELECT COUNT(*) as count FROM support_tickets
+      WHERE user_id = ? AND status IN ('open', 'in_progress')
+    `).bind(userId).first();
+
+    if ((openCount?.count as number || 0) >= MAX_OPEN_TICKETS_PER_USER) {
+      return c.json({
+        error: 'Too many open tickets',
+        message: `You have reached the limit of ${MAX_OPEN_TICKETS_PER_USER} open tickets. Please wait for existing tickets to be resolved.`
+      }, 429);
+    }
+
+    const ticketId = `tkt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = Date.now();
+
+    await c.env.DB.prepare(`
+      INSERT INTO support_tickets (id, user_id, title, description, status, priority, category, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'open', 'medium', ?, ?, ?)
+    `).bind(ticketId, userId, subject, message, category, now, now).run();
+
+    return c.json({
+      success: true,
+      data: { id: ticketId, title: subject, status: 'open', category, created_at: now }
+    }, 201);
+  } catch (error) {
+    console.error('Failed to create ticket:', error);
+    return c.json({ error: 'Failed to create ticket' }, 500);
+  }
+});
+
+// 我的工單列表
+userSupport.get('/tickets', async (c) => {
+  const userId = c.get('userId') as string;
+
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, title, status, priority, category, created_at, updated_at, resolved_at, closed_at
+      FROM support_tickets
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `).bind(userId).all();
+
+    return c.json({ success: true, data: { tickets: results, total: results.length } });
+  } catch (error) {
+    console.error('Failed to fetch tickets:', error);
+    return c.json({ error: 'Failed to fetch tickets' }, 500);
+  }
+});
+
+// 我的工單詳情（含對話）
+userSupport.get('/tickets/:id', async (c) => {
+  const userId = c.get('userId') as string;
+  const { id } = c.req.param();
+
+  try {
+    const ticket = await c.env.DB.prepare(`
+      SELECT id, title, description, status, priority, category, created_at, updated_at, resolved_at, closed_at
+      FROM support_tickets
+      WHERE id = ? AND user_id = ?
+    `).bind(id, userId).first();
+
+    if (!ticket) {
+      return c.json({ error: 'Ticket not found' }, 404);
+    }
+
+    const { results: messages } = await c.env.DB.prepare(`
+      SELECT id, user_role, message, created_at
+      FROM ticket_messages
+      WHERE ticket_id = ?
+      ORDER BY created_at ASC
+    `).bind(id).all();
+
+    return c.json({ success: true, data: { ticket, messages } });
+  } catch (error) {
+    console.error('Failed to fetch ticket:', error);
+    return c.json({ error: 'Failed to fetch ticket' }, 500);
+  }
+});
+
+// 回覆自己的工單（resolved 會重開；closed 不可回覆）
+userSupport.post('/tickets/:id/reply', async (c) => {
+  const userId = c.get('userId') as string;
+  const { id } = c.req.param();
+
+  try {
+    const body = await c.req.json();
+    const message = typeof body.message === 'string' ? body.message.trim() : '';
+
+    if (!message) {
+      return c.json({ error: 'Message is required' }, 400);
+    }
+    if (message.length > 5000) {
+      return c.json({ error: 'Message must be less than 5000 characters' }, 400);
+    }
+
+    const ticket = await c.env.DB.prepare(`
+      SELECT id, status FROM support_tickets WHERE id = ? AND user_id = ?
+    `).bind(id, userId).first();
+
+    if (!ticket) {
+      return c.json({ error: 'Ticket not found' }, 404);
+    }
+    if (ticket.status === 'closed') {
+      return c.json({ error: 'Ticket is closed', message: 'This ticket is closed. Please open a new ticket.' }, 400);
+    }
+
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = Date.now();
+
+    await c.env.DB.prepare(`
+      INSERT INTO ticket_messages (id, ticket_id, user_id, user_role, message, created_at)
+      VALUES (?, ?, ?, 'user', ?, ?)
+    `).bind(messageId, id, userId, message, now).run();
+
+    // 用戶回覆 resolved 工單 = 問題沒解決，重開
+    const newStatus = ticket.status === 'resolved' ? 'open' : ticket.status;
+    await c.env.DB.prepare(`
+      UPDATE support_tickets SET status = ?, updated_at = ?, resolved_at = NULL WHERE id = ?
+    `).bind(newStatus, now, id).run();
+
+    return c.json({ success: true, data: { message_id: messageId, status: newStatus } });
+  } catch (error) {
+    console.error('Failed to reply to ticket:', error);
+    return c.json({ error: 'Failed to reply', details: String(error) }, 500);
+  }
+});
+
+// ==========================================
+// Email inbound 建工單（mailhandler 服務對服務，掛 /api/support/inbound）
+// 驗證：X-Inbound-Token header 比對 INBOUND_TICKET_TOKEN secret（無 JWT）。
+// 寄件者 email 對得上 users 表才建單；對不上回 404，mailhandler 維持只告警。
+// ==========================================
+
+export const inboundSupport = new Hono<{ Bindings: Env }>();
+
+inboundSupport.post('/', async (c) => {
+  const token = c.req.header('X-Inbound-Token');
+  if (!c.env.INBOUND_TICKET_TOKEN || token !== c.env.INBOUND_TICKET_TOKEN) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  try {
+    const body = await c.req.json();
+    const fromEmail = typeof body.from_email === 'string' ? body.from_email.trim().toLowerCase() : '';
+    const subject = typeof body.subject === 'string' ? body.subject.trim().slice(0, 200) : '';
+    const message = typeof body.message === 'string' ? body.message.trim().slice(0, 5000) : '';
+    const category = VALID_CATEGORIES.includes(body.category) ? body.category : 'other';
+
+    if (!fromEmail || !message) {
+      return c.json({ error: 'from_email and message are required' }, 400);
+    }
+
+    const user = await c.env.DB.prepare(`
+      SELECT id FROM users WHERE lower(email) = ?
+    `).bind(fromEmail).first() as { id: string } | null;
+
+    if (!user) {
+      return c.json({ error: 'unknown_sender' }, 404);
+    }
+
+    // 同一寄件者防灌單（與網頁建單同一上限）
+    const openCount = await c.env.DB.prepare(`
+      SELECT COUNT(*) as count FROM support_tickets
+      WHERE user_id = ? AND status IN ('open', 'in_progress')
+    `).bind(user.id).first();
+
+    if ((openCount?.count as number || 0) >= MAX_OPEN_TICKETS_PER_USER) {
+      return c.json({ error: 'too_many_open_tickets' }, 429);
+    }
+
+    const ticketId = `tkt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = Date.now();
+
+    await c.env.DB.prepare(`
+      INSERT INTO support_tickets (id, user_id, title, description, status, priority, category, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'open', 'medium', ?, ?, ?)
+    `).bind(ticketId, user.id, subject || '(no subject)', message, category, now, now).run();
+
+    return c.json({ success: true, data: { id: ticketId, user_id: user.id } }, 201);
+  } catch (error) {
+    console.error('Failed to create inbound ticket:', error);
+    return c.json({ error: 'Failed to create ticket' }, 500);
+  }
+});
+
 export default support;

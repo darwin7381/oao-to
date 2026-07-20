@@ -459,6 +459,32 @@ const session = await stripe.checkout.sessions.create({
 
 ## 🗄️ 資料庫調整
 
+### ⚠️ 執行 Migration 的正確方式
+
+**重要**：必須使用與 Worker 相同的 `--persist-to` 路徑！
+
+```bash
+# Worker 啟動方式
+cd api-worker
+wrangler dev --port 8788 --persist-to ../.wrangler/oao-shared
+
+# ✅ Migration 必須使用相同路徑
+cd api-worker
+wrangler d1 migrations apply oao-to-db --local --persist-to ../.wrangler/oao-shared
+
+# ❌ 錯誤（會創建不同的資料庫）
+wrangler d1 migrations apply oao-to-db --local
+```
+
+**為什麼？**
+- Worker 和 Migration 必須操作同一個資料庫檔案
+- 路徑不同 = 不同的 SQLite 檔案
+- 會導致數據不一致、欄位缺失等問題
+
+**教訓**：2026-01-29 實際遇到此問題，導致訂閱數據消失
+
+---
+
 ### Migration 0007: Stripe Integration
 
 ```sql
@@ -978,9 +1004,9 @@ CVC：任意 3 位數（如 123）
 - [ ] **Stripe 帳號完成認證**（KYC）
 - [ ] **建立生產環境產品和價格**
 - [ ] **記錄所有 Price IDs**
-- [ ] **設定生產環境 Webhook 端點**
+- [ ] **設定生產環境 Webhook 端點（⚠️ 必須用 CLI/API，Dashboard UI 無法編輯事件）**
   - URL: `https://api.oao.to/api/webhook/stripe`
-  - 選擇事件類型（見下方清單）
+  - 見下方「Webhook 端點設定指令」
 - [ ] **取得生產環境 API Keys**
 - [ ] **設定 Cloudflare Secrets**
   ```bash
@@ -996,22 +1022,51 @@ CVC：任意 3 位數（如 123）
 
 ---
 
-### Webhook 事件清單
+### Webhook 端點設定指令
 
-在 Stripe Dashboard 設定以下事件：
+⚠️ **Stripe 新版 Workbench UI 無法編輯已存在 endpoint 的事件列表，必須用 CLI 或 API。**
 
-**必須監聽**：
-- `checkout.session.completed`
-- `invoice.payment_succeeded`
-- `invoice.payment_failed`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
+**建立生產 Webhook Endpoint：**
+```bash
+stripe webhook_endpoints create \
+  --url="https://api.oao.to/api/webhook/stripe" \
+  --enabled-events="checkout.session.completed,invoice.payment_succeeded,invoice.payment_failed,customer.subscription.updated,customer.subscription.deleted,payment_intent.succeeded,subscription_schedule.created,subscription_schedule.updated" \
+  --api-version="2025-02-24.acacia" \
+  --live
+```
 
-**建議監聽**（用於監控）：
-- `payment_intent.succeeded`
-- `payment_intent.payment_failed`
-- `customer.created`
-- `invoice.created`
+**如果 endpoint 已存在，更新事件列表：**
+```bash
+# 查出 endpoint ID
+stripe webhook_endpoints list --live
+
+# 更新
+stripe webhook_endpoints update we_XXXXX \
+  --enabled-events="checkout.session.completed,invoice.payment_succeeded,invoice.payment_failed,customer.subscription.updated,customer.subscription.deleted,payment_intent.succeeded,subscription_schedule.created,subscription_schedule.updated" \
+  --live
+```
+
+**建立後，將 signing secret 設定到 Worker：**
+```bash
+cd api-worker
+wrangler secret put STRIPE_WEBHOOK_SECRET --env production
+# 貼入 whsec_live_... 值
+```
+
+### Webhook 事件清單（8 個必須監聽）
+
+| 事件 | 用途 | Handler |
+|------|------|---------|
+| `checkout.session.completed` | 首次訂閱成功 | `handleCheckoutCompleted()` |
+| `invoice.payment_succeeded` | 月度續費 + 配額重置 | `handlePaymentSucceeded()` |
+| `invoice.payment_failed` | 付款失敗處理 | `handlePaymentFailed()` |
+| `customer.subscription.updated` | 方案變更（升降級）| `handleSubscriptionUpdated()` |
+| `customer.subscription.deleted` | 訂閱取消 | `handleSubscriptionDeleted()` |
+| `payment_intent.succeeded` | 一次性 Credits 購買 | `handlePaymentIntentSucceeded()` |
+| `subscription_schedule.created` | Portal 排程降級建立 | `handleSubscriptionSchedule()` |
+| `subscription_schedule.updated` | Portal 排程修改 | `handleSubscriptionSchedule()` |
+
+**本地開發**：`stripe listen --forward-to localhost:8788/api/webhook/stripe`（自動接收所有事件）
 
 ---
 

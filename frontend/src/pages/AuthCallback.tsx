@@ -9,22 +9,30 @@ export default function AuthCallback() {
   const [status, setStatus] = useState('處理中...');
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    
-    if (token) {
-      setStatus('✅ 登入成功！儲存 token...');
-      localStorage.setItem('token', token);
-      
-      // 刷新認證狀態
-      refreshAuth().then(() => {
+    const oauthError = searchParams.get('error');
+
+    if (oauthError) {
+      setStatus('❌ 登入失敗，請重試');
+      setTimeout(() => navigate('/'), 2000);
+      return;
+    }
+
+    // cookie-only：token 由後端寫進 httpOnly cookie（JS 讀不到、不進 URL）。
+    // 這裡只要 refreshAuth() → /me（cookie 隨 credentials:'include' 自動帶上）。
+    setStatus('✅ 登入成功！驗證中...');
+    refreshAuth()
+      .then(() => {
         setStatus('✅ 跳轉中...');
         setTimeout(() => navigate('/dashboard'), 300);
+      })
+      .catch((err) => {
+        console.error('[AuthCallback] refreshAuth failed:', err);
+        setStatus('❌ 驗證失敗，請重新登入');
+        setTimeout(() => navigate('/'), 2000);
       });
-    } else {
-      setStatus('❌ 沒有收到 token');
-      setTimeout(() => navigate('/'), 1500);
-    }
-  }, [searchParams, navigate, refreshAuth]);
+    // 只在掛載時執行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">

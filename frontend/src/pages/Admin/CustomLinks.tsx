@@ -1,26 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
 import { motion } from 'framer-motion';
 import {
     Link as LinkIcon,
     Search,
     Trash2,
     MousePointerClick,
-    User,
-    Calendar,
     Star
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { cn } from '../../lib/utils';
 import { adminApi, type AdminLink } from '../../lib/adminApi';
 
 export default function CustomLinks() {
     const { token } = useAuth();
     const [links, setLinks] = useState<AdminLink[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
@@ -39,9 +35,12 @@ export default function CustomLinks() {
         setError(null);
         try {
             const data = await adminApi.getLinks(1000);
-            // 只顯示自定義 slug 的連結（長度 > 8 或包含特殊字符）
-            const customLinks = data.data.links.filter(link => 
-                link.slug.length > 8 || /[_-]/.test(link.slug)
+            // is_custom 為權威欄位（0012 起新連結都有）；backfill 的舊資料是 NULL
+            // → 對 NULL 退回啟發式猜測（slug > 8 字或含 - / _），並知道其不精確
+            const customLinks = data.data.links.filter((link: any) =>
+                link.is_custom != null
+                    ? link.is_custom === 1 || link.is_custom === true
+                    : (link.slug.length > 8 || /[_-]/.test(link.slug))
             );
             setLinks(customLinks);
         } catch (err: any) {

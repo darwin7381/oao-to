@@ -7,31 +7,38 @@ import type { Env } from '../types';
 
 const analytics = new Hono<{ Bindings: Env }>();
 
+// slug 白名單：Analytics Engine SQL 不支援 parameterized query，
+// 插入前一律驗證格式，阻擋 SQL 注入
+const SLUG_RE = /^[a-zA-Z0-9_-]{1,50}$/;
+const isSafeSlug = (s: string) => SLUG_RE.test(s);
+
+// 所有分析端點都需要登入
+analytics.use('/*', requireAuth);
+
 // 獲取短網址分析數據
 analytics.get('/:slug', async (c) => {
   const slug = c.req.param('slug');
-  // const user = getUserFromContext(c);  // 暫時註解
+  const user = getUserFromContext(c);
 
-  // 🧪 開發階段：暫時跳過所有權驗證
-  // 生產階段：需要重新啟用
-  // const link = await c.env.DB.prepare(
-  //   'SELECT * FROM links WHERE slug = ? AND user_id = ?'
-  // ).bind(slug, user.userId).first();
+  if (!isSafeSlug(slug)) {
+    return c.json({ error: 'Invalid slug' }, 400);
+  }
 
-  // if (!link) {
-  //   return c.json({ error: 'Not found or unauthorized' }, 404);
-  // }
-
-  // 🧪 開發階段：移除檢查，直接查詢
   try {
     // 0. 從 KV 獲取鏈接詳細信息（與 Dashboard 和重定向保持一致）
     const linkDataStr = await c.env.LINKS.get(`link:${slug}`);
-    
+
     if (!linkDataStr) {
       return c.json({ error: 'Link not found' }, 404);
     }
 
     const linkData = JSON.parse(linkDataStr);
+
+    // 所有權驗證：只有連結擁有者或管理員可查看分析
+    const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+    if (linkData.userId !== user.userId && !isAdmin) {
+      return c.json({ error: 'Not found or unauthorized' }, 404);
+    }
 
     // 1. 總點擊數
     const totalClicks = await queryAnalytics(c.env, `
@@ -52,14 +59,14 @@ analytics.get('/:slug', async (c) => {
       LIMIT 10
     `);
 
-    // 3. 過去 7 天趨勢
+    // 3. 過去 30 天趨勢（原 7 天太短：連結超過一週沒點擊就顯示「無流量」，看起來像壞掉）
     const byDay = await queryAnalytics(c.env, `
-      SELECT 
+      SELECT
         toDate(timestamp) as date,
         COUNT() as clicks
       FROM link_clicks
       WHERE blob1 = '${slug}'
-        AND timestamp > NOW() - INTERVAL 7 DAY
+        AND timestamp > NOW() - INTERVAL 30 DAY
       GROUP BY date
       ORDER BY date
     `);
@@ -94,8 +101,7 @@ analytics.get('/:slug', async (c) => {
 
 // 獲取用戶的所有鏈接統計摘要
 analytics.get('/summary/all', async (c) => {
-  // const user = getUserFromContext(c);  // 暫時註解
-  const user = { userId: 'test-user' };  // 🧪 測試用
+  const user = getUserFromContext(c);
 
   try {
     // 獲取用戶的所有短網址
@@ -111,8 +117,12 @@ analytics.get('/summary/all', async (c) => {
       });
     }
 
-    const slugs = links.results.map((l: any) => l.slug);
-    const slugList = slugs.map(s => `'${s}'`).join(',');
+    // 白名單過濾後才插入 AE SQL（防注入 + defense in depth）
+    const slugs = links.results.map((l: any) => l.slug).filter((s: string) => isSafeSlug(s));
+    if (slugs.length === 0) {
+      return c.json({ totalLinks: links.results.length, totalClicks: 0, topLinks: [] });
+    }
+    const slugList = slugs.map((s: string) => `'${s}'`).join(',');
 
     // 查詢總點擊數
     const totalClicks = await queryAnalytics(c.env, `

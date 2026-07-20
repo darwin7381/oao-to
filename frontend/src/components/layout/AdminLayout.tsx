@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation, Link, Navigate } from 'react-router-dom';
 import {
     Users,
     BarChart3,
@@ -13,12 +13,15 @@ import {
     Shield,
     Link as LinkIcon,
     Key,
-    TrendingUp
+    TrendingUp,
+    Ticket
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import UserMenu from '../UserMenu';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Headphones, FileText } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useRole } from '../../hooks/useRole';
 
 const NAV_ITEMS = [
     { path: '/admin/analytics', label: 'Analytics', icon: TrendingUp },
@@ -35,7 +38,15 @@ const NAV_ITEMS = [
     { path: '/admin/users', label: 'Users', icon: Users },
     { path: '/admin/support', label: 'Support', icon: Headphones },
     { path: '/admin/payments', label: 'Payments', icon: DollarSign },
-    { path: '/admin/credits', label: 'Credits', icon: CreditCard },
+    { 
+        path: '/admin/credits', 
+        label: 'Credits', 
+        icon: CreditCard,
+        subItems: [
+            { path: '/admin/credits', label: 'Management' },
+            { path: '/admin/coupons', label: 'Coupons' }
+        ]
+    },
     { path: '/admin/plans', label: 'Plans', icon: FileText },
     { path: '/admin/audit-logs', label: 'Audit Logs', icon: BarChart3 },
     { path: '/admin/settings', label: 'Settings', icon: SettingsIcon },
@@ -46,11 +57,27 @@ export default function AdminLayout() {
     const location = useLocation();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [expandedItems, setExpandedItems] = useState<string[]>(['/admin/links']);
+    const { loading, user } = useAuth();
+    const { isAdmin } = useRole();
 
     // Close mobile menu on route change
     useEffect(() => {
         setIsMobileMenuOpen(false);
     }, [location.pathname]);
+
+    // 權限守衛：認證中先顯示 spinner，避免 admin 框架在守衛解析前閃現（FOUC）
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
+
+    // 已載入完成但非管理員（或未登入）→ 導回首頁
+    if (!user || !isAdmin) {
+        return <Navigate to="/" replace />;
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 font-nunito flex">

@@ -149,7 +149,12 @@ router.post('/', requireAuth, async (c) => {
       enterprise: { perMinute: 1000, perDay: 999999 },
     };
     
-    const rateLimitConfig = rateLimit || defaultRateLimits[planType];
+    // 依方案上限 clamp，防止用戶自訂超越方案的 rate limit
+    const planMax = defaultRateLimits[planType] || defaultRateLimits.free;
+    const rateLimitConfig = {
+      perMinute: Math.min(rateLimit?.perMinute ?? planMax.perMinute, planMax.perMinute),
+      perDay: Math.min(rateLimit?.perDay ?? planMax.perDay, planMax.perDay),
+    };
     
     // 存入資料庫
     console.log(`[CreateAPIKey] Inserting into D1 for user ${userId}, name: ${name}`);
@@ -209,16 +214,18 @@ router.put('/:keyId', requireAuth, async (c) => {
   const keyId = c.req.param('keyId');
   const body = await c.req.json();
   
-  // 確認 Key 屬於該用戶
+  // 確認 Key 屬於該用戶（同時取 key_hash 以清除快取）
   const existing = await c.env.DB.prepare(`
-    SELECT id FROM api_keys WHERE id = ? AND user_id = ?
-  `).bind(keyId, userId).first();
-  
+    SELECT id, key_hash FROM api_keys WHERE id = ? AND user_id = ?
+  `).bind(keyId, userId).first() as { id: string; key_hash: string } | null;
+
   if (!existing) {
     return c.json({ error: 'API key not found' }, 404);
   }
-  
-  const { name, isActive } = body;
+
+  const { name } = body;
+  // 前端 api.ts 送 snake_case（is_active）；也保留 camelCase 相容
+  const isActive = body.isActive !== undefined ? body.isActive : body.is_active;
   const updates: string[] = [];
   const values: any[] = [];
   
@@ -243,7 +250,10 @@ router.put('/:keyId', requireAuth, async (c) => {
     SET ${updates.join(', ')}
     WHERE id = ?
   `).bind(...values).run();
-  
+
+  // 立即清除 KV 快取（否則停用的 key 在快取 TTL 內仍可用、重啟用的 key 仍被擋）
+  await c.env.LINKS.delete(`apikey:cache:${existing.key_hash}`);
+
   return c.json({
     success: true,
     message: 'API key updated'
@@ -258,20 +268,21 @@ router.delete('/:keyId', requireAuth, async (c) => {
   const userId = c.get('userId');
   const keyId = c.req.param('keyId');
   
-  // 確認 Key 屬於該用戶
+  // 確認 Key 屬於該用戶（同時取 key_hash 以清除快取）
   const existing = await c.env.DB.prepare(`
-    SELECT id FROM api_keys WHERE id = ? AND user_id = ?
-  `).bind(keyId, userId).first();
-  
+    SELECT id, key_hash FROM api_keys WHERE id = ? AND user_id = ?
+  `).bind(keyId, userId).first() as { id: string; key_hash: string } | null;
+
   if (!existing) {
     return c.json({ error: 'API key not found' }, 404);
   }
-  
-  // 刪除
+
+  // 刪除 + 立即清除 KV 快取（否則被刪的 key 在快取 TTL 內仍可用）
   await c.env.DB.prepare(`
     DELETE FROM api_keys WHERE id = ?
   `).bind(keyId).run();
-  
+  await c.env.LINKS.delete(`apikey:cache:${existing.key_hash}`);
+
   return c.json({
     success: true,
     message: 'API key deleted'
