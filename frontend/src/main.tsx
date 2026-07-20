@@ -44,6 +44,7 @@ import AdminCustomLinks from './pages/Admin/CustomLinks';
 import AdminApiKeysMonitoring from './pages/Admin/ApiKeysMonitoring';
 import AdminAnalytics from './pages/Admin/Analytics';
 import AdminCouponManagement from './pages/Admin/CouponManagement';
+import AdminReports from './pages/Admin/Reports';
 // 路由結構：
 // 公開路由：
 // / - 公開首頁（快速縮短）
@@ -171,6 +172,14 @@ function App() {
             element={
               <AdminRoute>
                 <AdminAnalytics />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/reports"
+            element={
+              <AdminRoute>
+                <AdminReports />
               </AdminRoute>
             }
           />

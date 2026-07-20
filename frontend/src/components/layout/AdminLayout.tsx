@@ -14,7 +14,8 @@ import {
     Link as LinkIcon,
     Key,
     TrendingUp,
-    Ticket
+    Ticket,
+    Flag
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import UserMenu from '../UserMenu';
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
             { path: '/admin/links/custom', label: 'Custom Links' }
         ]
     },
+    { path: '/admin/reports', label: 'Reports', icon: Flag },
     { path: '/admin/api-keys', label: 'API Keys', icon: Key },
     { path: '/admin/users', label: 'Users', icon: Users },
     { path: '/admin/support', label: 'Support', icon: Headphones },
