@@ -65,8 +65,17 @@ export default function AuditLogDetail() {
         );
     }
 
-    const oldValue = log.old_value ? JSON.parse(log.old_value) : null;
-    const newValue = log.new_value ? JSON.parse(log.new_value) : null;
+    // old_value/new_value 有可能不是合法 JSON（例如純文字），解析失敗時退回原始字串
+    const safeParse = (raw?: string): unknown => {
+        if (!raw) return null;
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return raw;
+        }
+    };
+    const oldValue = safeParse(log.old_value);
+    const newValue = safeParse(log.new_value);
 
     return (
         <div className="space-y-6">
@@ -132,7 +141,7 @@ export default function AuditLogDetail() {
             </Card>
 
             {/* Data Changes */}
-            {(oldValue || newValue) && (
+            {(oldValue != null || newValue != null) && (
                 <Card className="border-0 shadow-xl">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">

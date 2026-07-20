@@ -13,41 +13,51 @@ links.use('/*', requireAuth);
 
 // 創建短網址
 links.post('/', async (c) => {
-  const { url, slug, title } = await c.req.json();
+  const { url, slug: customSlug, title } = await c.req.json();
   const user = getUserFromContext(c);
 
-  // 驗證輸入
-  if (!url || !slug) {
-    return c.json({ error: 'URL and slug are required' }, 400);
+  if (!url) {
+    return c.json({ error: 'URL is required' }, 400);
   }
 
-  // 驗證 slug 格式（只允許英數字和連字號）
-  if (!/^[a-zA-Z0-9-_]+$/.test(slug)) {
-    return c.json({ error: 'Invalid slug format' }, 400);
+  // slug 可省略：省略時自動生成（修掉「dashboard 不填自訂 slug 就 400」的 bug）
+  let slug: string;
+  if (customSlug) {
+    if (!/^[a-zA-Z0-9-_]{1,50}$/.test(customSlug)) {
+      return c.json({ error: 'Invalid slug format' }, 400);
+    }
+    const existing = await c.env.LINKS.get(`link:${customSlug}`);
+    if (existing) {
+      return c.json({ error: 'Slug already exists' }, 409);
+    }
+    slug = customSlug;
+  } else {
+    const { generateUniqueSlug } = await import('../utils/slug-generator');
+    slug = await generateUniqueSlug(c.env);
   }
 
-  // 檢查 slug 是否已存在
-  const existing = await c.env.LINKS.get(`link:${slug}`);
-  if (existing) {
-    return c.json({ error: 'Slug already exists' }, 409);
-  }
-
-  // 創建鏈接數據
+  const now = Date.now();
   const linkData: LinkData = {
     slug,
     url,
     userId: user.userId,
-    createdAt: Date.now(),
+    createdAt: now,
     title: title || url,
   };
 
-  // 存入 KV
-  await c.env.LINKS.put(`link:${slug}`, JSON.stringify(linkData));
-
-  // 存入 D1（方便查詢）
+  // D1 先寫（source of truth；失敗就整個請求失敗，不會產生 KV 孤兒）
   await c.env.DB.prepare(
-    'INSERT INTO links (slug, url, user_id, title, created_at) VALUES (?, ?, ?, ?, ?)'
-  ).bind(slug, url, user.userId, title || url, Date.now()).run();
+    `INSERT INTO links (slug, url, user_id, title, source, is_custom, created_at)
+     VALUES (?, ?, ?, ?, 'web', ?, ?)`
+  ).bind(slug, url, user.userId, title || url, customSlug ? 1 : 0, now).run();
+
+  // KV 快取（重定向路徑用）；失敗回滾 D1，維持兩邊一致
+  try {
+    await c.env.LINKS.put(`link:${slug}`, JSON.stringify(linkData));
+  } catch (kvErr) {
+    await c.env.DB.prepare('DELETE FROM links WHERE slug = ?').bind(slug).run();
+    throw kvErr;
+  }
 
   return c.json({
     slug,
@@ -58,55 +68,41 @@ links.post('/', async (c) => {
   }, 201);
 });
 
-// 獲取用戶的所有短網址
+// 獲取用戶的所有短網址（D1 = source of truth；修掉舊 KV 全域 list 只回前 1000 條、
+// 使用者連結因字母序被截掉的 bug）
 links.get('/', async (c) => {
   const user = getUserFromContext(c);
-  
-  // 臨時方案：從 KV 讀取並過濾（因為 D1 links 表還沒有數據）
-  // TODO: 將 KV 數據同步到 D1 後，改回查詢 D1
+  const limit = Math.min(parseInt(c.req.query('limit') || '200'), 500);
+  const offset = Math.max(parseInt(c.req.query('offset') || '0'), 0);
+
   try {
-    const list = await c.env.LINKS.list({ prefix: 'link:' });
-    
-    const allLinks = await Promise.all(
-      list.keys.map(async (key) => {
-        const data = await c.env.LINKS.get(key.name);
-        if (!data) return null;
-        
-        try {
-          const linkData = JSON.parse(data);
-          return linkData;
-        } catch {
-          return null;
-        }
-      })
-    );
-    
-    // 過濾只屬於當前用戶的連結（包括 anonymous 對於向後兼容）
-    const userLinks = allLinks.filter(link => 
-      link && (link.userId === user.userId || link.user_id === user.userId)
-    );
-    
-    // 生成 shortUrl
+    const [rows, count] = await Promise.all([
+      c.env.DB.prepare(
+        `SELECT slug, url, title, created_at FROM links
+         WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`
+      ).bind(user.userId, limit, offset).all(),
+      c.env.DB.prepare('SELECT COUNT(*) as n FROM links WHERE user_id = ?')
+        .bind(user.userId).first(),
+    ]);
+
     const baseUrl = c.req.header('host')?.includes('localhost')
-      ? `http://${c.req.header('host').replace(':8788', ':8787')}`
+      ? `http://${c.req.header('host')!.replace(':8788', ':8787')}`
       : 'https://oao.to';
-    
-    const links = userLinks
-      .map((link: any) => ({
-        slug: link.slug,
-        url: link.url,
-        title: link.title || link.url,
-        createdAt: link.createdAt || link.created_at,
-        shortUrl: `${baseUrl}/${link.slug}`,
-      }))
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // 按時間倒序
-    
+
+    const links = (rows.results || []).map((link: any) => ({
+      slug: link.slug,
+      url: link.url,
+      title: link.title || link.url,
+      createdAt: link.created_at,
+      shortUrl: `${baseUrl}/${link.slug}`,
+    }));
+
     return c.json({
       links,
-      total: links.length,
+      total: (count?.n as number) || 0,
     });
   } catch (error) {
-    console.error('Failed to fetch links from KV:', error);
+    console.error('Failed to fetch links from D1:', error);
     return c.json({ error: 'Failed to fetch links' }, 500);
   }
 });
@@ -130,6 +126,7 @@ links.get('/:slug', async (c) => {
 // 更新短網址
 links.put('/:slug', async (c) => {
   const slug = c.req.param('slug');
+  const user = getUserFromContext(c);
   const updates = await c.req.json<{
     title?: string;
     description?: string;
@@ -149,11 +146,11 @@ links.put('/:slug', async (c) => {
 
     const linkData: LinkData = JSON.parse(existingStr);
 
-    // TODO: 生產環境需要驗證所有權
-    // const user = getUserFromContext(c);
-    // if (linkData.userId !== user.userId && linkData.userId !== 'anonymous') {
-    //   return c.json({ error: '無權限編輯此短網址' }, 403);
-    // }
+    // 所有權驗證：只有連結擁有者或管理員可編輯
+    const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+    if (linkData.userId !== user.userId && !isAdmin) {
+      return c.json({ error: '無權限編輯此短網址' }, 403);
+    }
 
     // 更新資料
     const updatedData: LinkData = {
@@ -176,10 +173,11 @@ links.put('/:slug', async (c) => {
 
     // 同步更新 D1（基本欄位）
     await c.env.DB.prepare(
-      `UPDATE links 
-       SET title = ?, updated_at = ?, expires_at = ?, password = ?
+      `UPDATE links
+       SET url = ?, title = ?, updated_at = ?, expires_at = ?, password = ?
        WHERE slug = ?`
     ).bind(
+      updatedData.url || null,
       updatedData.title || null,
       updatedData.updatedAt || null,
       updatedData.expiresAt || null,
@@ -209,6 +207,7 @@ links.put('/:slug', async (c) => {
 // 重新抓取元數據
 links.post('/:slug/refetch', async (c) => {
   const slug = c.req.param('slug');
+  const user = getUserFromContext(c);
 
   try {
     // 從 KV 讀取現有資料
@@ -218,6 +217,12 @@ links.post('/:slug/refetch', async (c) => {
     }
 
     const linkData: LinkData = JSON.parse(existingStr);
+
+    // 所有權驗證：只有連結擁有者或管理員可操作
+    const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+    if (linkData.userId !== user.userId && !isAdmin) {
+      return c.json({ error: '無權限操作此短網址' }, 403);
+    }
 
     // 重新抓取元數據
     const metadata = await fetchMetadata(linkData.url);

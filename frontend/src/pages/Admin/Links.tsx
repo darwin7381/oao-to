@@ -9,15 +9,11 @@ import {
     Link as LinkIcon,
     Search,
     Trash2,
-    ExternalLink,
     BarChart2,
     AlertTriangle,
-    Ban,
     Flag,
-    Calendar,
     MousePointerClick,
     User,
-    Filter,
     Download,
     Eye
 } from 'lucide-react';
@@ -29,7 +25,7 @@ export default function AdminLinks() {
     const { token } = useAuth();
     const [links, setLinks] = useState<AdminLink[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'flagged' | 'inactive'>('all');
     const [selectedLink, setSelectedLink] = useState<AdminLink | null>(null);
@@ -64,12 +60,13 @@ export default function AdminLinks() {
 
     const displayLinks = links;
 
-    const handleDeleteLink = async (linkId: string) => {
+    // 後端 DELETE /admin/links/:slug 期待 slug（KV key 為 link:{slug}），因此傳 slug 而非 id
+    const handleDeleteLink = async (slug: string) => {
         if (!confirm('確定要永久刪除這個連結嗎？此操作無法復原。')) return;
 
         try {
-            await adminApi.deleteLink(linkId);
-            setLinks(links.filter(l => l.id !== linkId));
+            await adminApi.deleteLink(slug);
+            setLinks(links.filter(l => l.slug !== slug));
             setShowDetailsModal(false);
         } catch (err: any) {
             console.error('Failed to delete link:', err);
@@ -81,7 +78,7 @@ export default function AdminLinks() {
         if (!selectedLink) return;
 
         try {
-            await adminApi.flagLink(selectedLink.id, flagReason, true);
+            await adminApi.flagLink(selectedLink.slug, flagReason, true);
             await loadLinks();
             setShowFlagModal(false);
             setFlagReason('');
@@ -110,6 +107,29 @@ export default function AdminLinks() {
 
     const totalClicks = displayLinks.reduce((sum, link) => sum + link.clicks, 0);
     const flaggedCount = displayLinks.filter(l => l.is_flagged).length;
+
+    const handleExportCsv = () => {
+        const headers = ['Slug', 'URL', 'User Email', 'Clicks', 'Status', 'Flagged', 'Created'];
+        const rows = filteredLinks.map((l) => [
+            l.slug,
+            l.url,
+            l.user_email || '',
+            String(l.clicks ?? 0),
+            l.is_active ? 'Active' : 'Disabled',
+            l.is_flagged ? 'Yes' : 'No',
+            l.created_at ? new Date(l.created_at).toISOString() : '',
+        ]);
+        const csv = [headers, ...rows]
+            .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `links-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 
     if (loading) {
         return (
@@ -211,7 +231,7 @@ export default function AdminLinks() {
                                 </button>
                             ))}
                         </div>
-                        <Button variant="outline" className="border-gray-200">
+                        <Button variant="outline" className="border-gray-200" onClick={handleExportCsv} disabled={filteredLinks.length === 0}>
                             <Download className="w-4 h-4 mr-2" />
                             Export
                         </Button>
@@ -351,7 +371,7 @@ export default function AdminLinks() {
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        onClick={() => handleDeleteLink(link.id)}
+                                                        onClick={() => handleDeleteLink(link.slug)}
                                                         className="text-red-600 hover:bg-red-50"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
@@ -437,7 +457,7 @@ export default function AdminLinks() {
                             </Button>
                             <Button
                                 variant="destructive"
-                                onClick={() => handleDeleteLink(selectedLink.id)}
+                                onClick={() => handleDeleteLink(selectedLink.slug)}
                                 className="flex-1"
                             >
                                 <Trash2 className="w-4 h-4 mr-2" />

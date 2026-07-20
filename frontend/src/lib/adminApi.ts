@@ -29,8 +29,16 @@ export interface AdminUser {
   avatar?: string;
   role: string;
   created_at: number;
+  // 來自 LEFT JOIN credits（admin.ts /users），未訂閱用戶為 null
+  plan_type?: string | null;
+  billing_period?: 'monthly' | 'yearly' | null;
+  stripe_subscription_id?: string | null;
+  subscription_status?: string | null;
 }
 
+// 對齊實際 api_keys 表 schema（migration 0003）+ admin.ts JOIN 出的 user_email/user_name
+// 注意：requests_today / rate_limit_hits / error_rate 這些欄位後端「不存在」，
+// 前端只能顯示 0 / N/A，不能假裝有數據。只有 total_requests 是真欄位。
 export interface AdminApiKey {
   id: string;
   user_id: string;
@@ -42,7 +50,9 @@ export interface AdminApiKey {
   rate_limit_per_minute: number;
   rate_limit_per_day: number;
   is_active: number;
+  total_requests?: number;
   last_used_at?: number;
+  expires_at?: number;
   created_at: number;
 }
 
@@ -72,6 +82,7 @@ export interface CreditTransaction {
   created_at: string | number;
 }
 
+// 對齊實際 payments 表 schema（migration 0004）
 export interface Payment {
   id: string;
   user_id: string;
@@ -79,9 +90,13 @@ export interface Payment {
   amount: number;
   currency: string;
   status: string;
-  stripe_payment_intent_id?: string;
-  credits_purchased: number;
+  plan: string;
+  credits: number;
+  payment_method?: string;
+  stripe_payment_id?: string;
+  stripe_customer_id?: string;
   created_at: number;
+  completed_at?: number;
 }
 
 export interface AuditLog {
@@ -170,21 +185,9 @@ export interface AnalyticsData {
 // ==================== API Client ====================
 
 class AdminAPI {
-  private getToken(): string | null {
-    return localStorage.getItem('token');
-  }
-
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const token = this.getToken();
-    
-    if (!token) {
-      console.error('[adminApi] No token found in localStorage');
-      throw new Error('未登入或 Token 已過期');
-    }
-
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
       ...(options.headers as Record<string, string>),
     };
 
@@ -193,6 +196,9 @@ class AdminAPI {
     const response = await fetch(fullUrl, {
       ...options,
       headers,
+      // 認證改為純 cookie：httpOnly cookie 由 credentials:'include' 自動送出。
+      // 不再讀 localStorage token、不再擋「無 token」、不再送 Authorization: Bearer。
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -242,6 +248,17 @@ class AdminAPI {
     return this.request<{ success: boolean; message: string }>(`/users/${userId}/role`, {
       method: 'PUT',
       body: JSON.stringify({ role }),
+    });
+  }
+
+  async setUserPlan(userId: string, data: {
+    planType: 'free' | 'starter' | 'pro' | 'enterprise';
+    billingPeriod?: 'monthly' | 'yearly';
+    clearSubscription?: boolean;
+  }): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/users/${userId}/set-plan`, {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   }
 

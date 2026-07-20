@@ -102,10 +102,10 @@ CREATE INDEX idx_stripe_price_period ON stripe_price_mapping(billing_period);
 CREATE INDEX idx_stripe_price_active ON stripe_price_mapping(is_active);
 
 INSERT INTO stripe_price_mapping (id, plan_type, billing_period, stripe_price_id, display_price, actual_price, created_at) VALUES
-  ('spm_starter_monthly', 'starter', 'monthly', 'REPLACE_ME', 900, 900, strftime('%s', 'now') * 1000),
-  ('spm_starter_yearly', 'starter', 'yearly', 'REPLACE_ME', 8900, 8900, strftime('%s', 'now') * 1000),
-  ('spm_pro_monthly', 'pro', 'monthly', 'REPLACE_ME', 2900, 2900, strftime('%s', 'now') * 1000),
-  ('spm_pro_yearly', 'pro', 'yearly', 'REPLACE_ME', 28900, 28900, strftime('%s', 'now') * 1000);
+  ('spm_starter_monthly', 'starter', 'monthly', 'price_1SucvsP9Zv2QNmH8ysKDRx0V', 900, 900, strftime('%s', 'now') * 1000),
+  ('spm_starter_yearly', 'starter', 'yearly', 'price_1SudVEP9Zv2QNmH8n0UOa7LP', 8900, 8900, strftime('%s', 'now') * 1000),
+  ('spm_pro_monthly', 'pro', 'monthly', 'price_1SudVpP9Zv2QNmH8BkXGfgC8', 2900, 2900, strftime('%s', 'now') * 1000),
+  ('spm_pro_yearly', 'pro', 'yearly', 'price_1SudWBP9Zv2QNmH82AY4dQ4P', 28900, 28900, strftime('%s', 'now') * 1000);
 
 -- Step 5: 優惠碼表（不使用 FOREIGN KEY）
 CREATE TABLE IF NOT EXISTS promo_codes (

@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRole } from '../../hooks/useRole';
-import UserMenu from '../../components/UserMenu';
 import Avatar from '../../components/Avatar';
 import { Button } from '../../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Users, Shield, Crown, Search, Filter } from 'lucide-react';
+import { Card, CardHeader, CardTitle } from '../../components/ui/Card';
+import { Users, Shield, Crown, Search, Filter, CreditCard } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { adminApi, type AdminUser } from '../../lib/adminApi';
+import { cn } from '../../lib/utils';
 
 export default function AdminUsers() {
   const { user: currentUser, token } = useAuth();
@@ -16,6 +16,9 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'admin' | 'superadmin'>('all');
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
 
   // 載入用戶列表（路由已確保有權限，直接載入）
   useEffect(() => {
@@ -43,6 +46,38 @@ export default function AdminUsers() {
     }
   };
 
+  // 管理員設定用戶方案
+  const handlePlanChange = async (userId: string, newPlan: string) => {
+    if (!isSuperAdmin) {
+      alert('Only super admins can change plans');
+      return;
+    }
+
+    const planLabels: Record<string, string> = {
+      free: 'Free', starter: 'Starter', pro: 'Pro', enterprise: 'Enterprise'
+    };
+
+    if (!confirm(`Set this user's plan to ${planLabels[newPlan] || newPlan}?\n\nThis only changes the local DB, not Stripe.`)) {
+      return;
+    }
+
+    try {
+      await adminApi.setUserPlan(userId, {
+        planType: newPlan as any,
+        clearSubscription: newPlan === 'free',
+      });
+
+      // 更新本地狀態
+      setUsers(users.map(u =>
+        u.id === userId ? { ...u, plan_type: newPlan } : u
+      ));
+
+      alert(`✅ Plan set to ${planLabels[newPlan]}`);
+    } catch (err: any) {
+      alert(`❌ Failed: ${err.message}`);
+    }
+  };
+
   // 更新用戶角色
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (!isSuperAdmin) {
@@ -67,6 +102,17 @@ export default function AdminUsers() {
       alert(`❌ 更新失敗：${err.message}`);
     }
   };
+
+  // 搜尋 + 角色過濾（email / name 比對）
+  const filteredUsers = users.filter((u) => {
+    if (roleFilter !== 'all' && u.role !== roleFilter) return false;
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.name || '').toLowerCase().includes(q)
+    );
+  });
 
   // 資料載入中
   if (loading) {
@@ -149,13 +195,42 @@ export default function AdminUsers() {
               <input
                 type="text"
                 placeholder="Search users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 pr-4 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 outline-none text-sm transition-all w-64"
               />
             </div>
-            <Button variant="outline" size="sm" colorScheme="blue" className="rounded-xl">
-              <Filter className="w-4 h-4 mr-2" />
-              Filter
-            </Button>
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                colorScheme="blue"
+                className={cn('rounded-xl', roleFilter !== 'all' && 'border-blue-400 text-blue-600')}
+                onClick={() => setShowFilterMenu((v) => !v)}
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                {roleFilter === 'all' ? 'Filter' : `Role: ${roleFilter}`}
+              </Button>
+              {showFilterMenu && (
+                <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl border border-gray-200 shadow-lg z-20 py-1">
+                  {(['all', 'user', 'admin', 'superadmin'] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => {
+                        setRoleFilter(r);
+                        setShowFilterMenu(false);
+                      }}
+                      className={cn(
+                        'w-full text-left px-4 py-2 text-sm font-medium hover:bg-blue-50 transition-colors capitalize',
+                        roleFilter === r ? 'text-blue-600 bg-blue-50' : 'text-gray-700'
+                      )}
+                    >
+                      {r === 'all' ? 'All roles' : r}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </CardHeader>
 
@@ -165,12 +240,13 @@ export default function AdminUsers() {
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Plan</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Joined</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-blue-50/30 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
@@ -188,6 +264,9 @@ export default function AdminUsers() {
                   </td>
                   <td className="px-6 py-4">
                     <RoleBadge role={user.role} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <PlanBadge plan={user.plan_type || 'free'} />
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 font-medium">
                     {new Date(user.created_at).toLocaleDateString('zh-TW', {
@@ -209,6 +288,16 @@ export default function AdminUsers() {
                           <option value="admin">Admin</option>
                           <option value="superadmin">Super Admin</option>
                         </select>
+                        <select
+                          value={user.plan_type || 'free'}
+                          onChange={(e) => handlePlanChange(user.id, e.target.value)}
+                          className="text-xs font-bold bg-white border border-orange-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none shadow-sm hover:border-orange-300 transition-colors"
+                        >
+                          <option value="free">Free</option>
+                          <option value="starter">Starter</option>
+                          <option value="pro">Pro</option>
+                          <option value="enterprise">Enterprise</option>
+                        </select>
                       </div>
                     )}
                   </td>
@@ -217,7 +306,7 @@ export default function AdminUsers() {
             </tbody>
           </table>
 
-          {users.length === 0 && (
+          {filteredUsers.length === 0 && (
             <div className="p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
                 <Users className="w-8 h-8" />
@@ -255,6 +344,22 @@ const StatsCard = ({ label, value, icon: Icon, color, delay }: any) => {
         <Icon className="w-5 h-5" />
       </div>
     </motion.div>
+  );
+}
+
+function PlanBadge({ plan }: { plan: string }) {
+  const config: Record<string, { label: string; className: string }> = {
+    free: { label: 'Free', className: 'bg-gray-100 text-gray-600 border-gray-200' },
+    starter: { label: 'Starter', className: 'bg-blue-100 text-blue-700 border-blue-200' },
+    pro: { label: 'Pro', className: 'bg-orange-100 text-orange-700 border-orange-200' },
+    enterprise: { label: 'Enterprise', className: 'bg-purple-100 text-purple-700 border-purple-200' },
+  };
+  const { label, className } = config[plan] || config.free;
+  return (
+    <span className={cn("inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border", className)}>
+      <CreditCard className="w-3 h-3" />
+      {label}
+    </span>
   );
 }
 

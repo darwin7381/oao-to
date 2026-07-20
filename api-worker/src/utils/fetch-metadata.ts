@@ -13,8 +13,36 @@ export interface Metadata {
  * 從目標 URL 抓取元數據
  * 優先順序：Open Graph > HTML 標籤 > 默認值
  */
+/**
+ * SSRF 防護：只允許 http/https + 公開網址，擋掉內網/loopback/雲端 metadata endpoint
+ */
+function isSafeFetchUrl(url: string): boolean {
+  let u: URL;
+  try { u = new URL(url); } catch { return false; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+  const host = u.hostname.toLowerCase();
+  // 擋 localhost / 內網主機名 / 雲端 metadata
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal') || host.endsWith('.local')) return false;
+  if (host === 'metadata.google.internal') return false;
+  // 擋 IP literal 的私網段（IPv4）
+  const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const [a, b] = [parseInt(m[1]), parseInt(m[2])];
+    if (a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) ||
+        (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) ||
+        a >= 224) return false; // 私網 / loopback / link-local(含 169.254.169.254) / multicast
+  }
+  // 擋 IPv6 loopback / link-local / unique-local
+  if (host === '::1' || host === '[::1]' || host.startsWith('fe80') || host.startsWith('fc') || host.startsWith('fd')) return false;
+  return true;
+}
+
 export async function fetchMetadata(url: string): Promise<Metadata> {
   try {
+    // SSRF gate：非安全網址直接回預設，不發 fetch
+    if (!isSafeFetchUrl(url)) {
+      return getDefaultMetadata(url);
+    }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超時
 

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import { api, type Link as LinkType } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -10,7 +9,6 @@ import { QRCodeGenerator } from '../../components/QRCodeGenerator';
 import { Plus, Search, ExternalLink, BarChart2, Trash2, Calendar, Link as LinkIcon, QrCode, Copy } from 'lucide-react';
 
 export default function Dashboard() {
-  const { user } = useAuth();
   const [links, setLinks] = useState<LinkType[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -18,10 +16,15 @@ export default function Dashboard() {
   const [createData, setCreateData] = useState({ url: '', slug: '', title: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
+  const [totalClicks, setTotalClicks] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     loadLinks().catch((error) => {
       console.error('[Dashboard] Unhandled error:', error);
+    });
+    loadStats().catch((error) => {
+      console.error('[Dashboard] Unhandled error loading stats:', error);
     });
   }, []);
 
@@ -30,10 +33,24 @@ export default function Dashboard() {
     try {
       const data = await api.getLinks();
       setLinks(data.links);
+      setLoadError(null);
     } catch (err: any) {
+      // 載入失敗要讓使用者看得出來（原本靜默吞掉 → 跟「沒有連結」分不清）
       console.error('Failed to load links:', err);
+      setLoadError(err?.message || 'Failed to load your links. Please retry.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 從後端聚合分析摘要取得總點擊數（links 列表本身不帶 clicks）
+  const loadStats = async () => {
+    try {
+      const summary = await api.getSummary();
+      setTotalClicks(typeof summary?.totalClicks === 'number' ? summary.totalClicks : 0);
+    } catch (err: any) {
+      console.error('Failed to load stats summary:', err);
+      // 保持 null，UI 顯示 fallback「-」
     }
   };
 
@@ -41,31 +58,19 @@ export default function Dashboard() {
     e.preventDefault();
     setCreateLoading(true);
 
-    const apiUrl = import.meta.env.PROD
-      ? 'https://api.oao.to/shorten'
-      : 'http://localhost:8788/shorten';
-
     try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: createData.url,
-          customSlug: createData.slug || undefined,
-        }),
+      // 使用已認證的 /api/links 端點，連結會綁定到當前使用者
+      await api.createLink({
+        url: createData.url,
+        slug: createData.slug || undefined,
+        title: createData.title || undefined,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Creation failed');
-      }
-
-      const data = await response.json();
       setShowCreateModal(false);
       setCreateData({ url: '', slug: '', title: '' });
       loadLinks();
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      alert(`Error: ${error.message || 'Creation failed'}`);
     } finally {
       setCreateLoading(false);
     }
@@ -73,7 +78,20 @@ export default function Dashboard() {
 
   const handleDelete = async (slug: string) => {
     if (!confirm('Are you sure you want to delete this link?')) return;
+
+    // 樂觀更新：先從畫面移除，失敗再還原
+    const previousLinks = links;
     setLinks(links.filter(l => l.slug !== slug));
+
+    try {
+      await api.deleteLink(slug);
+      // 刪除成功後刷新統計數據
+      loadStats();
+    } catch (error: any) {
+      console.error('Failed to delete link:', error);
+      setLinks(previousLinks); // 還原
+      alert(`Failed to delete link: ${error.message || 'Please try again.'}`);
+    }
   };
 
   const copyLink = (text: string) => {
@@ -123,7 +141,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Total Clicks</p>
-                <p className="text-3xl font-black text-gray-800">-</p>
+                <p className="text-3xl font-black text-gray-800">{totalClicks === null ? '-' : totalClicks.toLocaleString()}</p>
               </div>
             </div>
           </Card>
@@ -133,8 +151,12 @@ export default function Dashboard() {
                 <Calendar className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">This Month</p>
-                <p className="text-3xl font-black text-gray-800">-</p>
+                <p className="text-sm text-gray-400 font-bold uppercase tracking-wider">Avg. Clicks / Link</p>
+                <p className="text-3xl font-black text-gray-800">
+                  {totalClicks === null || links.length === 0
+                    ? '-'
+                    : Math.round(totalClicks / links.length).toLocaleString()}
+                </p>
               </div>
             </div>
           </Card>
@@ -156,6 +178,12 @@ export default function Dashboard() {
           <div className="text-center py-20 flex flex-col items-center">
             <div className="animate-spin w-10 h-10 border-4 border-orange-400 border-t-transparent rounded-full mb-4" />
             <p className="text-gray-400 font-medium">Loading your awesomeness...</p>
+          </div>
+        ) : loadError ? (
+          <div className="text-center py-16 bg-red-50/60 rounded-[3rem] border border-dashed border-red-200">
+            <h3 className="text-xl font-bold text-red-700 mb-2">Couldn't load your links</h3>
+            <p className="text-red-500 mb-6 max-w-sm mx-auto">{loadError}</p>
+            <Button variant="outline" onClick={() => loadLinks()}>Retry</Button>
           </div>
         ) : filteredLinks.length === 0 ? (
           <div className="text-center py-20 bg-white/50 rounded-[3rem] border border-dashed border-gray-200">

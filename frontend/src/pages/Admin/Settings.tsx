@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -7,21 +6,13 @@ import {
     Shield,
     Mail,
     Key,
-    Save
+    Save,
+    Construction
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
 
 export default function AdminSettings() {
-    const [saveSuccess, setSaveSuccess] = useState(false);
-    const [saving, setSaving] = useState(false);
-
-    const handleSave = async () => {
-        setSaving(true);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setSaving(false);
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
-    };
+    // 目前後端沒有 admin settings API，這頁純為 UI 佔位。
+    // 為避免造成「假成功」誤導，所有欄位設為 read-only，Save 按鈕停用並標示 Coming Soon。
 
     return (
         <div className="space-y-8">
@@ -32,6 +23,15 @@ export default function AdminSettings() {
                 <p className="text-lg text-gray-500 font-medium">
                     Manage global platform settings, security policies, and integrations
                 </p>
+            </div>
+
+            {/* Coming Soon Notice */}
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800">
+                <Construction className="w-5 h-5 mt-0.5 shrink-0" />
+                <div className="text-sm font-medium">
+                    <span className="font-bold">Coming Soon.</span>{' '}
+                    These settings are not yet connected to the backend. Changes are shown for preview only and are not saved.
+                </div>
             </div>
 
             {/* Settings Grid */}
@@ -187,26 +187,18 @@ export default function AdminSettings() {
                 </Card>
             </div>
 
-            {/* Save Button */}
+            {/* Save Button (disabled — backend not yet available) */}
             <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
-                <Button variant="ghost" colorScheme="blue" className="text-gray-500 hover:text-gray-700">
-                    Reset Changes
-                </Button>
                 <Button
-                    onClick={handleSave}
-                    disabled={saving}
+                    disabled
                     colorScheme="blue"
-                    className={cn(
-                        "px-8 min-w-[160px]",
-                        saveSuccess ? "bg-green-500 hover:bg-green-600 shadow-green-200" : ""
-                    )}
+                    className="px-8 min-w-[160px] cursor-not-allowed opacity-60"
+                    title="Admin settings API is not available yet"
                 >
-                    {saving ? <span className="animate-pulse">Saving...</span> : saveSuccess ? "Saved Successfully!" : (
-                        <span className="flex items-center gap-2">
-                            <Save className="w-4 h-4" />
-                            Save Configuration
-                        </span>
-                    )}
+                    <span className="flex items-center gap-2">
+                        <Save className="w-4 h-4" />
+                        Save Configuration (Coming Soon)
+                    </span>
                 </Button>
             </div>
         </div>

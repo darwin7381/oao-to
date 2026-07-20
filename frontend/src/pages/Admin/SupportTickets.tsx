@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { Headphones, User, Calendar, Filter } from 'lucide-react';
+import { Headphones, User, Calendar } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
 import { adminApi, type SupportTicket } from '../../lib/adminApi';
@@ -13,7 +13,7 @@ export default function SupportTickets() {
     const { token } = useAuth();
     const [tickets, setTickets] = useState<SupportTicket[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [filterStatus, setFilterStatus] = useState<string>('all');
 
     useEffect(() => {

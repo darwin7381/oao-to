@@ -3,6 +3,23 @@
 import type { Env, CreditDeduction, TransactionType } from '../types';
 
 /**
+ * 有效方案 SQL 片段（entitlement gate）：
+ * - admin plan_override 最優先（webhook 永不觸碰）
+ * - 訂閱處於未付款狀態 → 只給 free 權益
+ * - past_due 保留權益（grace period）；incomplete 不在此列 —
+ *   它只發生在「首張 invoice 未付」（fulfill gate 本來就不會開通），
+ *   續費 SCA 的正確狀態是 past_due，若把 incomplete 列入會誤傷已付費用戶
+ * - 其餘用 Stripe 同步的 plan_type
+ */
+function effectivePlanSql(prefix: string): string {
+  return `CASE
+    WHEN ${prefix}plan_override IS NOT NULL THEN ${prefix}plan_override
+    WHEN ${prefix}subscription_status IN ('unpaid', 'paused', 'incomplete_expired') THEN 'free'
+    ELSE ${prefix}plan_type
+  END`;
+}
+
+/**
  * 記錄 API 使用到 Analytics Engine
  */
 export async function trackApiUsage(
@@ -92,36 +109,34 @@ export async function deductCredits(
     }
 
     // 1. 獲取當前 credit 狀態（JOIN plans 獲取動態配額）
+    // 有效方案（entitlement gate）：
+    //   - admin plan_override 最優先
+    //   - 訂閱處於未付款狀態（unpaid/paused/incomplete/incomplete_expired）→ 只給 free 權益
+    //   - 其餘用 Stripe 同步的 plan_type（past_due 保留權益作為 grace period）
     const creditResult = await env.DB.prepare(`
-      SELECT 
+      SELECT
         c.balance,
         c.purchased_balance,
-        c.plan_type,
+        ${effectivePlanSql('c.')} as plan_type,
         c.monthly_used,
-        c.overage_limit,
-        c.overage_used,
-        c.overage_rate,
         COALESCE(p.monthly_credits, 100) as monthly_quota
       FROM credits c
-      LEFT JOIN plans p ON c.plan_type = p.name
+      LEFT JOIN plans p ON ${effectivePlanSql('c.')} = p.name
       WHERE c.user_id = ?
     `).bind(userId).first();
-    
+
     if (!creditResult) {
-      return { 
-        success: false, 
-        balanceAfter: 0, 
-        error: 'Credit account not found' 
+      return {
+        success: false,
+        balanceAfter: 0,
+        error: 'Credit account not found'
       };
     }
-    
+
     const monthlyQuota = creditResult.monthly_quota as number;
     const monthlyUsed = creditResult.monthly_used as number;
-    const overageLimit = creditResult.overage_limit as number;
-    const overageUsed = creditResult.overage_used as number;
-    const purchasedBalance = creditResult.purchased_balance as number;
     const planType = creditResult.plan_type as string;
-    
+
     // 2. Enterprise 用戶無限制
     if (planType === 'enterprise') {
       const transactionId = await recordTransaction(env, userId, {
@@ -133,28 +148,30 @@ export async function deductCredits(
         resourceType: options.resourceType,
         resourceId: options.resourceId,
       });
-      
-      return { 
-        success: true, 
+
+      return {
+        success: true,
         balanceAfter: creditResult.balance as number,
         transactionId,
         usedQuota: true
       };
     }
-    
-    // 3. 優先使用月配額
-    const remainingQuota = monthlyQuota - monthlyUsed;
-    
-    if (remainingQuota >= cost) {
-      // 完全從月配額扣除
-      await env.DB.prepare(`
-        UPDATE credits
-        SET monthly_used = monthly_used + ?,
-            total_used = total_used + ?,
-            updated_at = ?
-        WHERE user_id = ?
-      `).bind(cost, cost, Date.now(), userId).run();
-      
+
+    // 3. 優先使用月配額 — 條件式 UPDATE（原子 check-and-update）：
+    // 並發請求各自重算條件，超出配額的那個 changes = 0，不可能超用
+    const quotaResult = await env.DB.prepare(`
+      UPDATE credits
+      SET monthly_used = monthly_used + ?,
+          total_used = total_used + ?,
+          updated_at = ?
+      WHERE user_id = ?
+        AND monthly_used + ? <= (
+          SELECT COALESCE(p.monthly_credits, 100) FROM plans p
+          WHERE p.name = ${effectivePlanSql('credits.')}
+        )
+    `).bind(cost, cost, Date.now(), userId, cost).run();
+
+    if ((quotaResult.meta?.changes ?? 0) === 1) {
       const transactionId = await recordTransaction(env, userId, {
         type: 'usage_quota',
         amount: -cost,
@@ -164,72 +181,38 @@ export async function deductCredits(
         resourceType: options.resourceType,
         resourceId: options.resourceId,
       });
-      
-      return { 
-        success: true, 
+
+      return {
+        success: true,
         balanceAfter: creditResult.balance as number,
         transactionId,
         usedQuota: true
       };
     }
-    
-    // 4. 月配額不足，檢查是否允許超額
-    if (overageLimit > 0) {
-      const remainingOverage = overageLimit - overageUsed;
-      const neededFromOverage = cost - remainingQuota;
-      
-      if (remainingOverage >= neededFromOverage) {
-        // 可以用超額
-        await env.DB.prepare(`
-          UPDATE credits
-          SET monthly_used = monthly_quota,
-              overage_used = overage_used + ?,
-              total_used = total_used + ?,
-              updated_at = ?
-          WHERE user_id = ?
-        `).bind(neededFromOverage, cost, Date.now(), userId).run();
-        
-        const transactionId = await recordTransaction(env, userId, {
-          type: 'usage_overage',
-          amount: -cost,
-          balanceAfter: creditResult.balance as number,
-          description: options.description || `使用超額（${overageUsed + neededFromOverage}/${overageLimit}）`,
-          apiKeyId: options.apiKeyId,
-          resourceType: options.resourceType,
-          resourceId: options.resourceId,
-        });
-        
-        return { 
-          success: true, 
-          balanceAfter: creditResult.balance as number,
-          transactionId,
-          usedOverage: true
-        };
-      }
-    }
-    
-    // 5. 配額和超額都不夠，使用永久 credits（Pool B）
-    const currentBalance = creditResult.balance as number;
-    
-    if (currentBalance < cost) {
-      return { 
-        success: false, 
-        balanceAfter: currentBalance, 
-        error: 'Insufficient credits' 
-      };
-    }
-    
-    const newBalance = currentBalance - cost;
-    
-    // 只扣 balance，来源追踪字段（purchased_balance 等）不变
-    await env.DB.prepare(`
+
+    // 4. 月配額不足，使用永久 credits（Pool B）— 同樣條件式 UPDATE，
+    // balance >= cost 在 UPDATE 內驗證，並發時不可能扣成負數
+    const balanceResult = await env.DB.prepare(`
       UPDATE credits
       SET balance = balance - ?,
           total_used = total_used + ?,
           updated_at = ?
-      WHERE user_id = ?
-    `).bind(cost, cost, Date.now(), userId).run();
-    
+      WHERE user_id = ? AND balance >= ?
+    `).bind(cost, cost, Date.now(), userId, cost).run();
+
+    if ((balanceResult.meta?.changes ?? 0) !== 1) {
+      return {
+        success: false,
+        balanceAfter: creditResult.balance as number,
+        error: 'Insufficient credits'
+      };
+    }
+
+    const afterRow = await env.DB.prepare(`
+      SELECT balance FROM credits WHERE user_id = ?
+    `).bind(userId).first();
+    const newBalance = (afterRow?.balance as number) ?? 0;
+
     const transactionId = await recordTransaction(env, userId, {
       type: options.type || 'usage',
       amount: -cost,
@@ -239,19 +222,19 @@ export async function deductCredits(
       resourceType: options.resourceType,
       resourceId: options.resourceId,
     });
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       balanceAfter: newBalance,
       transactionId
     };
-    
+
   } catch (error) {
     console.error('Credit deduction error:', error);
-    return { 
-      success: false, 
-      balanceAfter: 0, 
-      error: 'Internal error during credit deduction' 
+    return {
+      success: false,
+      balanceAfter: 0,
+      error: 'Internal error during credit deduction'
     };
   }
 }
@@ -362,17 +345,18 @@ export async function getCreditBalance(
   planType: string;
 } | null> {
   const result = await env.DB.prepare(`
-    SELECT 
-      balance,
-      monthly_quota,
-      monthly_used,
-      plan_type
-    FROM credits
-    WHERE user_id = ?
+    SELECT
+      c.balance,
+      COALESCE(p.monthly_credits, 100) as monthly_quota,
+      c.monthly_used,
+      ${effectivePlanSql('c.')} as plan_type
+    FROM credits c
+    LEFT JOIN plans p ON ${effectivePlanSql('c.')} = p.name
+    WHERE c.user_id = ?
   `).bind(userId).first();
-  
+
   if (!result) return null;
-  
+
   return {
     balance: result.balance as number,
     monthlyQuota: result.monthly_quota as number,

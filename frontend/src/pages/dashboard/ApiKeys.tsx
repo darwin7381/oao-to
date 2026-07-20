@@ -5,7 +5,7 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
-import { Plus, Copy, Trash2, Power, Key, Shield, Calendar } from 'lucide-react';
+import { Plus, Copy, Check, Trash2, Power, Key, Shield, Calendar } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
@@ -33,6 +33,7 @@ export default function ApiKeys() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [newKey, setNewKey] = useState<string>('');
+  const [copied, setCopied] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '',
     environment: 'live' as 'live' | 'test',
@@ -109,9 +110,14 @@ export default function ApiKeys() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    // Could add toast here
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
   };
 
   if (loading) {
@@ -370,6 +376,7 @@ export default function ApiKeys() {
         onClose={() => {
           setShowKeyModal(false);
           setNewKey('');
+          setCopied(false);
         }}
         title="API Key Created Successfully"
         className="glass-panel"
@@ -400,8 +407,16 @@ export default function ApiKeys() {
                   <Key className="w-5 h-5" />
                 </div>
               </div>
-              <Button onClick={() => copyToClipboard(newKey)} className="flex-shrink-0" variant="secondary">
-                <Copy className="w-5 h-5" />
+              <Button
+                onClick={() => copyToClipboard(newKey)}
+                className={cn("flex-shrink-0 transition-colors", copied && "bg-green-100 text-green-700 hover:bg-green-100")}
+                variant="secondary"
+              >
+                {copied ? (
+                  <><Check className="w-5 h-5 mr-1.5" /> Copied!</>
+                ) : (
+                  <Copy className="w-5 h-5" />
+                )}
               </Button>
             </div>
           </div>
@@ -410,6 +425,7 @@ export default function ApiKeys() {
             <Button onClick={() => {
               setShowKeyModal(false);
               setNewKey('');
+              setCopied(false);
             }} className="w-full">
               I have saved my key
             </Button>

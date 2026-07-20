@@ -78,8 +78,8 @@ export async function checkRateLimit(
 }
 
 /**
- * 檢查 API Key 的 Rate Limit
- * 同時檢查每分鐘和每天的限制
+ * 檢查 API Key 的 Rate Limit — 透過 Durable Object 原子計數
+ * 每個 apiKeyId 對應一個 DO 實例，並發請求序列化，無法繞過
  */
 export async function checkApiKeyRateLimit(
   env: Env,
@@ -87,52 +87,49 @@ export async function checkApiKeyRateLimit(
   perMinute: number,
   perDay: number
 ): Promise<{ allowed: boolean; reason?: string; headers: Record<string, string> }> {
-  // 檢查每分鐘限制
-  const minuteCheck = await checkRateLimit(
-    env,
-    `apikey:${apiKeyId}:minute`,
-    perMinute,
-    60  // 60 秒窗口
-  );
-  
-  const headers: Record<string, string> = {
-    'X-RateLimit-Limit-Minute': perMinute.toString(),
-    'X-RateLimit-Remaining-Minute': minuteCheck.remaining.toString(),
-    'X-RateLimit-Reset-Minute': Math.floor(minuteCheck.resetAt / 1000).toString(),
-  };
-  
-  if (!minuteCheck.allowed) {
+  try {
+    const id = env.RATE_LIMITER.idFromName(`apikey:${apiKeyId}`);
+    const stub = env.RATE_LIMITER.get(id);
+    const res = await stub.fetch('https://rate-limiter/check', {
+      method: 'POST',
+      body: JSON.stringify({ perMinute, perDay }),
+    });
+    const r = await res.json() as {
+      allowed: boolean; scope?: string;
+      remainingMinute: number; remainingDay: number;
+      minuteReset: number; dayReset: number;
+    };
+
+    const headers: Record<string, string> = {
+      'X-RateLimit-Limit-Minute': perMinute.toString(),
+      'X-RateLimit-Remaining-Minute': Math.max(0, r.remainingMinute).toString(),
+      'X-RateLimit-Reset-Minute': Math.floor(r.minuteReset / 1000).toString(),
+      'X-RateLimit-Limit-Day': perDay.toString(),
+      'X-RateLimit-Remaining-Day': Math.max(0, r.remainingDay).toString(),
+      'X-RateLimit-Reset-Day': Math.floor(r.dayReset / 1000).toString(),
+    };
+
+    if (!r.allowed) {
+      return {
+        allowed: false,
+        reason: r.scope === 'day'
+          ? `Rate limit exceeded: ${perDay} requests per day`
+          : `Rate limit exceeded: ${perMinute} requests per minute`,
+        headers,
+      };
+    }
+    return { allowed: true, headers };
+  } catch (error) {
+    console.error('Rate limit DO error:', error);
+    // DO 出錯時 fail open（不阻擋正常用戶），但記錄
     return {
-      allowed: false,
-      reason: `Rate limit exceeded: ${perMinute} requests per minute`,
-      headers
+      allowed: true,
+      headers: {
+        'X-RateLimit-Limit-Minute': perMinute.toString(),
+        'X-RateLimit-Limit-Day': perDay.toString(),
+      },
     };
   }
-  
-  // 檢查每天限制
-  const dayCheck = await checkRateLimit(
-    env,
-    `apikey:${apiKeyId}:day`,
-    perDay,
-    86400  // 24 小時窗口
-  );
-  
-  headers['X-RateLimit-Limit-Day'] = perDay.toString();
-  headers['X-RateLimit-Remaining-Day'] = dayCheck.remaining.toString();
-  headers['X-RateLimit-Reset-Day'] = Math.floor(dayCheck.resetAt / 1000).toString();
-  
-  if (!dayCheck.allowed) {
-    return {
-      allowed: false,
-      reason: `Rate limit exceeded: ${perDay} requests per day`,
-      headers
-    };
-  }
-  
-  return {
-    allowed: true,
-    headers
-  };
 }
 
 

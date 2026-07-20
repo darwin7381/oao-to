@@ -1,14 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { motion } from 'framer-motion';
 import {
     TrendingUp,
     Users,
-    Link as LinkIcon,
-    MousePointerClick,
     DollarSign,
-    Calendar,
     Award,
     Globe
 } from 'lucide-react';

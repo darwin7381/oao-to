@@ -2,16 +2,19 @@ import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { CreditCard, Users, DollarSign, Zap, Settings as SettingsIcon } from 'lucide-react';
+import { CreditCard, Users, DollarSign, Zap, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRole } from '../../hooks/useRole';
 import PlanEditModal from '../../components/admin/PlanEditModal';
 import { adminApi, type Plan } from '../../lib/adminApi';
 
 export default function PlansManagement() {
     const { token } = useAuth();
+    const { isSuperAdmin } = useRole();
     const [plans, setPlans] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
 
     useEffect(() => {
@@ -63,6 +66,19 @@ export default function PlansManagement() {
                 </div>
             </div>
 
+            {(error || saveError) && (
+                <div className="flex items-start gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700">
+                    <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
+                    <div className="flex-1 text-sm font-medium">{saveError || error}</div>
+                    <button
+                        onClick={() => { setSaveError(null); setError(null); }}
+                        className="text-red-400 hover:text-red-600 font-bold"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {plans.map((plan) => (
                     <Card key={plan.id} className="border-0 shadow-xl hover:shadow-2xl transition-all">
@@ -91,21 +107,23 @@ export default function PlansManagement() {
                                 </div>
                                 <div className="flex items-center gap-2 text-sm">
                                     <Users className="w-4 h-4 text-green-500" />
-                                    <span>{plan.subscriber_count} subscribers</span>
+                                    <span>{plan.subscriber_count ?? 0} subscribers</span>
                                 </div>
                             </div>
                             <Badge className={plan.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
                                 {plan.is_active ? 'Active' : 'Inactive'}
                             </Badge>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="w-full mt-4"
-                                onClick={() => setEditingPlan(plan)}
-                            >
-                                <SettingsIcon className="w-4 h-4 mr-2" />
-                                Edit Plan
-                            </Button>
+                            {isSuperAdmin && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full mt-4"
+                                    onClick={() => setEditingPlan(plan)}
+                                >
+                                    <SettingsIcon className="w-4 h-4 mr-2" />
+                                    Edit Plan
+                                </Button>
+                            )}
                         </CardContent>
                     </Card>
                 ))}
@@ -151,9 +169,16 @@ export default function PlansManagement() {
                 onClose={() => setEditingPlan(null)}
                 onSave={async (updates) => {
                     if (!editingPlan) return;
-                    await adminApi.updatePlan(editingPlan.id, updates);
-                    setEditingPlan(null);
-                    await loadPlans();
+                    setSaveError(null);
+                    try {
+                        await adminApi.updatePlan(editingPlan.id, updates);
+                        setEditingPlan(null);
+                        await loadPlans();
+                    } catch (err: any) {
+                        console.error('Failed to update plan:', err);
+                        setSaveError(err?.message || 'Failed to update plan');
+                        throw err; // 讓 modal 也能感知失敗（保持開啟）
+                    }
                 }}
             />
         </div>

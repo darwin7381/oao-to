@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -12,10 +13,13 @@ import {
   Sparkles,
   RefreshCcw,
   Zap,
-  Activity
+  Activity,
+  AlertCircle,
+  XCircle
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { api } from '../../lib/api';
+import { useSubscriptionStatus } from '../../hooks/useSubscriptionStatus';
 
 interface CreditInfo {
   balance: {
@@ -30,12 +34,6 @@ interface CreditInfo {
     monthlyRemaining: number;
     monthlyResetAt?: number;
   };
-  overage: {
-    limit: number;
-    used: number;
-    remaining: number;
-    rate: number;
-  };
   statistics: {
     totalPurchased: number;
     totalUsed: number;
@@ -48,47 +46,100 @@ interface Transaction {
   amount: number;
   balanceAfter: number;
   description?: string;
+  metadata?: string;
   createdAt: number;
 }
 
 export default function Credits() {
   const { token } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [creditInfo, setCreditInfo] = useState<CreditInfo | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  
+  // 訂閱狀態（新增）
+  const { subscription, error: subError, refetch: refetchSubscription } = useSubscriptionStatus();
 
   const apiUrl = import.meta.env.PROD ? 'https://api.oao.to' : 'http://localhost:8788';
 
-  useEffect(() => {
-    const fetchData = async () => {
-      console.log('[Credits] Fetching data...');
-      try {
-        const [creditsRes, txRes] = await Promise.all([
-          fetch(`${apiUrl}/api/account/credits`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${apiUrl}/api/account/transactions?limit=20`, { headers: { 'Authorization': `Bearer ${token}` } })
-        ]);
+  const fetchData = async () => {
+    console.log('[Credits] Fetching data...');
+    setLoadError(false);
+    try {
+      // cookie-only 認證：帶 credentials，不再用 Bearer（token 已非真 JWT）
+      const [creditsRes, txRes] = await Promise.all([
+        fetch(`${apiUrl}/api/account/credits`, { credentials: 'include' }),
+        fetch(`${apiUrl}/api/account/transactions?limit=20`, { credentials: 'include' })
+      ]);
 
-        if (creditsRes.ok) {
-          const data = await creditsRes.json();
-          setCreditInfo(data.data);
-        }
-
-        if (txRes.ok) {
-          const data = await txRes.json();
-          setTransactions(data.data.transactions);
-        }
-      } catch (error) {
-        console.error('Failed to load credits data:', error);
-      } finally {
-        setLoading(false);
+      if (creditsRes.ok) {
+        const data = await creditsRes.json();
+        setCreditInfo(data.data);
+      } else {
+        // credits 是核心資料，載入失敗視為錯誤狀態
+        throw new Error(`Credits request failed (${creditsRes.status})`);
       }
-    };
 
+      if (txRes.ok) {
+        const data = await txRes.json();
+        setTransactions(data.data.transactions);
+      }
+    } catch (error) {
+      console.error('Failed to load credits data:', error);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    setLoading(true);
+    fetchData().catch((error) => {
+      console.error('[Credits] Retry failed:', error);
+    });
+  };
+
+  useEffect(() => {
     fetchData().catch((error) => {
       console.error('[Credits] Unhandled error in fetchData:', error);
     });
   }, [apiUrl, token]);
 
+  // 偵測從 Portal 返回或購買成功，強制刷新所有資料
+  useEffect(() => {
+    const isPortalReturn = searchParams.has('portal_return');
+    const isPurchaseSuccess = searchParams.has('purchase') && searchParams.get('purchase') === 'success';
+    
+    if (isPortalReturn || isPurchaseSuccess) {
+      console.log(`[Credits] ${isPortalReturn ? 'Portal return' : 'Purchase success'} detected, refreshing...`);
+      // 清除 URL 參數
+      searchParams.delete('portal_return');
+      searchParams.delete('purchase');
+      searchParams.delete('credits');
+      setSearchParams(searchParams, { replace: true });
+      // 延遲 refresh（給 Stripe webhook 一點時間處理）
+      const timer = setTimeout(() => {
+        refetchSubscription();
+        setLoading(true);
+        fetchData();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+
+  // 打開 Stripe Customer Portal（管理訂閱 / 更新付款方式）
+  const openCustomerPortal = async () => {
+    try {
+      const response = await api.createPortalSession();
+      if (response.success && response.portalUrl) {
+        window.location.href = response.portalUrl;
+      }
+    } catch (err) {
+      console.error('Portal error:', err);
+    }
+  };
 
   const getPlanColor = (planType: string) => {
     switch (planType) {
@@ -107,14 +158,20 @@ export default function Credits() {
     );
   }
 
-  if (!creditInfo) {
+  if (loadError || !creditInfo) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
         <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
           <Activity className="w-8 h-8 text-red-500" />
         </div>
         <h3 className="text-xl font-bold text-gray-900">Failed to load credit info</h3>
-        <p className="text-gray-500 mt-2">Please try refreshing the page later.</p>
+        <p className="text-gray-500 mt-2 mb-6">
+          Something went wrong while loading your credits. Please try again.
+        </p>
+        <Button onClick={handleRetry} className="gap-2">
+          <RefreshCcw className="w-4 h-4" />
+          Retry
+        </Button>
       </div>
     );
   }
@@ -137,6 +194,63 @@ export default function Credits() {
           Monitor your API usage, track your credit balance, and view transaction history in real-time.
         </p>
       </div>
+
+      {/* 訂閱狀態載入失敗提示 */}
+      {!subscription && subError && (
+        <div className="mb-8 flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm font-medium text-amber-700">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          Unable to load your subscription status. Please refresh the page.
+        </div>
+      )}
+
+      {/* 付款失敗 / 需要驗證警示 */}
+      {subscription?.current && (subscription.current.status === 'past_due' || subscription.current.status === 'incomplete') && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            "mb-8 rounded-xl border-2 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4",
+            subscription.current.status === 'past_due'
+              ? "border-red-200 bg-red-50"
+              : "border-amber-300 bg-amber-50"
+          )}
+        >
+          <div className="flex items-start gap-3">
+            {subscription.current.status === 'past_due' ? (
+              <XCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+            )}
+            <div>
+              <h3 className={cn(
+                "font-bold",
+                subscription.current.status === 'past_due' ? "text-red-800" : "text-amber-800"
+              )}>
+                {subscription.current.status === 'past_due' ? 'Payment Failed' : 'Payment Action Required'}
+              </h3>
+              <p className={cn(
+                "text-sm mt-1",
+                subscription.current.status === 'past_due' ? "text-red-700" : "text-amber-700"
+              )}>
+                {subscription.current.status === 'past_due'
+                  ? 'Your last payment failed. Please update your payment method to avoid service interruption.'
+                  : 'Your payment requires additional verification. Please complete it to avoid service interruption.'}
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={openCustomerPortal}
+            className={cn(
+              "flex-shrink-0",
+              subscription.current.status === 'past_due'
+                ? "bg-red-600 hover:bg-red-700 text-white border-0 shadow-lg shadow-red-200"
+                : "bg-amber-500 hover:bg-amber-600 text-white border-0 shadow-lg shadow-amber-200"
+            )}
+          >
+            Update Payment Method
+          </Button>
+        </motion.div>
+      )}
 
       {/* Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
@@ -215,10 +329,81 @@ export default function Credits() {
               <h3 className="text-2xl font-bold text-gray-900 capitalize mb-1">
                 {creditInfo.plan.type}
               </h3>
-              {creditInfo.plan.monthlyResetAt && (
+              
+              {/* 計費資訊 */}
+              {subscription?.current && subscription.current.plan !== 'free' && (
+                <p className="text-xs text-gray-500 mb-1">
+                  {subscription.current.priceFormatted}/{subscription.current.billingPeriod === 'yearly' ? 'year' : 'month'}
+                </p>
+              )}
+              
+              {/* Scheduled Change 提示 */}
+              {subscription?.scheduledChange && (
+                <div className="mt-3 mb-2 w-full">
+                  <div className={cn(
+                    "text-xs font-medium px-3 py-2 rounded-lg border flex flex-col items-center gap-1",
+                    subscription.scheduledChange.type === 'cancel' 
+                      ? "text-red-700 bg-red-50 border-red-200"
+                      : "text-orange-700 bg-orange-50 border-orange-200"
+                  )}>
+                    <div className="flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      <span className="font-bold">
+                        {subscription.scheduledChange.type === 'cancel' ? 'Ending' : 'Scheduled Change'}
+                      </span>
+                    </div>
+                    <span>
+                      {subscription.scheduledChange.type === 'cancel' 
+                        ? `Cancels ${subscription.scheduledChange.effectiveDateFormatted.split(',')[0]}`
+                        : `→ ${subscription.scheduledChange.newPlanDisplayName} on ${subscription.scheduledChange.effectiveDateFormatted.split(',')[0]}`
+                      }
+                    </span>
+                    {subscription.scheduledChange.daysUntilChange > 0 && (
+                      <span className="text-[10px] opacity-75">
+                        {subscription.scheduledChange.daysUntilChange} days left
+                      </span>
+                    )}
+                  </div>
+                  {subscription.scheduledChange.canRevert && (
+                    <button
+                      onClick={async () => {
+                        if (confirm(subscription?.scheduledChange?.type === 'cancel' 
+                          ? 'Reactivate your subscription?' 
+                          : 'Cancel this scheduled change?'
+                        )) {
+                          try {
+                            await api.cancelScheduledChange();
+                            refetchSubscription();
+                            fetchData();
+                          } catch (err) {
+                            alert('Failed to cancel change');
+                          }
+                        }
+                      }}
+                      className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                    >
+                      {subscription.scheduledChange.type === 'cancel' 
+                        ? 'Reactivate' 
+                        : 'Cancel change'}
+                    </button>
+                  )}
+                </div>
+              )}
+              
+              {creditInfo.plan.monthlyResetAt && !subscription?.scheduledChange && (
                 <p className="text-xs text-gray-500 bg-gray-100 rounded-full px-3 py-1 mt-2">
                   Resets {new Date(creditInfo.plan.monthlyResetAt).toLocaleDateString()}
                 </p>
+              )}
+              
+              {/* Manage Subscription 按鈕 */}
+              {subscription?.current && subscription.current.plan !== 'free' && (
+                <button
+                  onClick={openCustomerPortal}
+                  className="mt-3 text-xs font-semibold text-gray-500 hover:text-orange-600 transition-colors"
+                >
+                  Manage Subscription →
+                </button>
               )}
             </CardContent>
           </Card>
@@ -281,8 +466,8 @@ export default function Credits() {
               </h3>
               <div className="grid grid-cols-1 gap-4">
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-                  <div className="text-sm text-gray-500 mb-1">Total Purchased</div>
-                  <div className="text-2xl font-bold text-gray-900">{creditInfo.statistics.totalPurchased.toLocaleString()}</div>
+                  <div className="text-sm text-gray-500 mb-1">Total Credits Received</div>
+                  <div className="text-2xl font-bold text-gray-900">{(creditInfo.balance.total || 0).toLocaleString()}</div>
                 </div>
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
                   <div className="text-sm text-gray-500 mb-1">Total Consumed</div>
@@ -292,12 +477,88 @@ export default function Credits() {
             </CardContent>
           </Card>
 
-          <div className="bg-blue-50 border border-blue-100 rounded-3xl p-6">
-            <h4 className="font-bold text-blue-900 mb-2">Did you know?</h4>
-            <p className="text-sm text-blue-700 leading-relaxed">
-              Your monthly quota resets automatically. Unused subscription credits do not roll over, but purchased credits never expire.
-            </p>
-          </div>
+          {/* Scheduled Change Detail Panel */}
+          {subscription?.scheduledChange && (
+            <Card className={cn(
+              "border-2",
+              subscription.scheduledChange.type === 'cancel'
+                ? "border-red-200 bg-red-50/50"
+                : "border-orange-200 bg-orange-50/50"
+            )}>
+              <CardContent className="p-5">
+                <h3 className={cn(
+                  "text-sm font-bold mb-3 flex items-center gap-2",
+                  subscription.scheduledChange.type === 'cancel' ? "text-red-800" : "text-orange-800"
+                )}>
+                  <AlertCircle className="w-4 h-4" />
+                  {subscription.scheduledChange.type === 'cancel' 
+                    ? 'Subscription Ending'
+                    : 'Upcoming Plan Change'}
+                </h3>
+                
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Effective Date</span>
+                    <span className="font-bold text-gray-900">
+                      {subscription.scheduledChange.effectiveDateFormatted.split(',')[0]}
+                    </span>
+                  </div>
+                  
+                  {subscription.scheduledChange.newPlanDisplayName && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">New Plan</span>
+                      <span className="font-bold text-gray-900">
+                        {subscription.scheduledChange.newPlanDisplayName}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {subscription.scheduledChange.newPriceFormatted && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">New Price</span>
+                      <span className="font-bold text-gray-900">
+                        {subscription.scheduledChange.newPriceFormatted}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* 功能變更明細 */}
+                  {subscription.scheduledChange.changes && (
+                    <div className="pt-2 mt-2 border-t border-gray-200 space-y-1.5">
+                      <div className="text-gray-500 font-semibold">After change:</div>
+                      {subscription.scheduledChange.changes.monthlyQuota && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Quota</span>
+                          <span className="text-gray-900">
+                            {subscription.scheduledChange.changes.monthlyQuota.from.toLocaleString()} → {subscription.scheduledChange.changes.monthlyQuota.to.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                <p className={cn(
+                  "text-[10px] mt-3 leading-relaxed",
+                  subscription.scheduledChange.type === 'cancel' ? "text-red-600" : "text-orange-600"
+                )}>
+                  {subscription.scheduledChange.type === 'cancel'
+                    ? "You can continue using your current plan features until the end date."
+                    : "You'll keep your current plan features until the change takes effect."
+                  }
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {!subscription?.scheduledChange && (
+            <div className="bg-blue-50 border border-blue-100 rounded-3xl p-6">
+              <h4 className="font-bold text-blue-900 mb-2">Did you know?</h4>
+              <p className="text-sm text-blue-700 leading-relaxed">
+                Your monthly quota resets automatically. Unused subscription credits do not roll over, but purchased credits never expire.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Right Col: Transaction History */}
@@ -307,7 +568,7 @@ export default function Credits() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <History className="w-5 h-5" />
-                  Recent Transactions
+                  Account Activity
                 </CardTitle>
                 <div className="text-sm text-gray-500">Last 20 records</div>
               </div>
@@ -350,15 +611,88 @@ export default function Credits() {
                       </div>
 
                       <div className="text-right">
-                        <div className={cn(
-                          "font-bold text-lg",
-                          tx.amount > 0 ? "text-green-600" : "text-gray-900"
-                        )}>
-                          {tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString()}
-                        </div>
-                        <div className="text-xs text-gray-400 font-mono">
-                          Bal: {tx.balanceAfter.toLocaleString()}
-                        </div>
+                        {tx.type === 'subscription' ? (
+                          <div>
+                            <div className="text-sm font-semibold text-orange-600 mb-1">
+                              {(() => {
+                                try {
+                                  const meta = typeof tx.metadata === 'string' && tx.metadata !== 'null' 
+                                    ? JSON.parse(tx.metadata) 
+                                    : null;
+                                  if (meta?.quota_to) {
+                                    return `Quota → ${meta.quota_to.toLocaleString()}/mo`;
+                                  }
+                                  // 從 description 解析
+                                  const match = tx.description?.match(/(\d+,?\d*)/);
+                                  return match ? `Quota → ${match[1]}/mo` : 'Quota Upgrade';
+                                } catch (e) {
+                                  console.error('Parse metadata error:', e, tx.metadata);
+                                  return 'Quota Upgrade';
+                                }
+                              })()}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {(() => {
+                                try {
+                                  const meta = typeof tx.metadata === 'string' && tx.metadata !== 'null'
+                                    ? JSON.parse(tx.metadata)
+                                    : null;
+                                  if (meta?.immediate_increase) {
+                                    return `+${meta.immediate_increase.toLocaleString()} credits now`;
+                                  }
+                                  return '';
+                                } catch {
+                                  return '';
+                                }
+                              })()}
+                            </div>
+                          </div>
+                        ) : tx.type === 'quota_reset' ? (
+                          <div>
+                            <div className="text-sm font-semibold text-blue-600 mb-1">
+                              {(() => {
+                                try {
+                                  const meta = typeof tx.metadata === 'string' && tx.metadata !== 'null' && tx.metadata !== ''
+                                    ? JSON.parse(tx.metadata)
+                                    : null;
+                                  if (meta?.restored) {
+                                    return `Restored ${meta.restored.toLocaleString()} credits`;
+                                  }
+                                  return 'Quota Reset';
+                                } catch {
+                                  return 'Quota Reset';
+                                }
+                              })()}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {(() => {
+                                try {
+                                  const meta = typeof tx.metadata === 'string' && tx.metadata !== 'null' && tx.metadata !== ''
+                                    ? JSON.parse(tx.metadata)
+                                    : null;
+                                  if (meta?.quota) {
+                                    return `Quota: ${meta.quota.toLocaleString()}/mo`;
+                                  }
+                                  return '';
+                                } catch {
+                                  return '';
+                                }
+                              })()}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className={cn(
+                              "font-bold text-lg",
+                              tx.amount > 0 ? "text-green-600" : "text-red-600"
+                            )}>
+                              {tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString()} credits
+                            </div>
+                            <div className="text-xs text-gray-400 font-mono">
+                              Bal: {tx.balanceAfter.toLocaleString()}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </motion.div>
                   ))}

@@ -19,6 +19,9 @@ export function getStripe(env: Env): Stripe {
   return new Stripe(apiKey, {
     apiVersion: '2024-11-20.acacia',
     httpClient: Stripe.createFetchHttpClient(),
+    // 自動重試網路錯誤；stripe-node 會替重試自動附 idempotency key，
+    // 避免連線中斷造成重複建立 customer/session/coupon
+    maxNetworkRetries: 2,
   });
 }
 

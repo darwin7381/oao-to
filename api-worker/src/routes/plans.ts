@@ -1,7 +1,7 @@
 // Plans Management API
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/auth';
-import { requireAdmin } from '../middleware/role';
+import { requireAdmin, requireSuperAdmin } from '../middleware/role';
 import type { Env } from '../types';
 
 const plans = new Hono<{ Bindings: Env }>();
@@ -38,10 +38,12 @@ plans.get('/', requireAdmin(), async (c) => {
 });
 
 // 更新方案
-plans.put('/:id', requireAdmin(), async (c) => {
+plans.put('/:id', requireSuperAdmin(), async (c) => {
   const { id } = c.req.param();
   const updates = await c.req.json();
   const userId = c.get('userId') as string;
+  const userEmail = c.get('userEmail') as string;
+  const userRole = c.get('userRole') as string;
 
   try {
     // 獲取舊值（用於記錄）

@@ -40,16 +40,19 @@ export async function generateUniqueSlug(
   env: { LINKS: KVNamespace },
   maxAttempts: number = 10
 ): Promise<string> {
+  // 先試 6 位
   for (let i = 0; i < maxAttempts; i++) {
     const slug = generateRandomSlug(6);
     const existing = await env.LINKS.get(`link:${slug}`);
-    
-    if (!existing) {
-      return slug;
-    }
+    if (!existing) return slug;
   }
-  
-  // 如果 6 位數都衝突，增加長度
-  return generateRandomSlug(8);
+  // 6 位衝突多 → 升到 8 位，仍要逐一驗證唯一（不可回未驗證的 slug 覆蓋他人連結）
+  for (let i = 0; i < maxAttempts; i++) {
+    const slug = generateRandomSlug(8);
+    const existing = await env.LINKS.get(`link:${slug}`);
+    if (!existing) return slug;
+  }
+  // 極端情況全部衝突 → 拋錯讓呼叫端回 500，而非靜默覆蓋
+  throw new Error('Failed to generate a unique slug after multiple attempts');
 }
 

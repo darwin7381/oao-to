@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   HelpCircle, 
@@ -16,6 +17,7 @@ import Footer from '../components/layout/Footer';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../lib/api';
 
 export default function Support() {
   const { user } = useAuth();
@@ -28,6 +30,9 @@ export default function Support() {
     message: ''
   });
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [createdTicketId, setCreatedTicketId] = useState<string | null>(null);
 
   const faqs = [
     {
@@ -79,12 +84,29 @@ export default function Support() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 表單提交（未來整合 Support Ticket 系統）
-    setFormSubmitted(true);
-    setTimeout(() => {
-      setFormSubmitted(false);
+    setSubmitError(null);
+
+    // 未登入：走 email 管線（support@ 收信是活的），mailto 帶入主旨與內容
+    if (!user) {
+      const body = `${formData.message}\n\n— ${formData.name} (${formData.email})`;
+      window.location.href = `mailto:support@oao.to?subject=${encodeURIComponent(formData.subject)}&body=${encodeURIComponent(body)}`;
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const ticket = await api.createSupportTicket({
+        subject: formData.subject,
+        message: formData.message,
+      });
+      setCreatedTicketId(ticket.id);
+      setFormSubmitted(true);
       setFormData({ ...formData, subject: '', message: '' });
-    }, 3000);
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Failed to submit. Please try again or email support@oao.to');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -255,10 +277,26 @@ export default function Support() {
                   <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-green-500 mx-auto mb-4">
                     <CheckCircle className="w-8 h-8" />
                   </div>
-                  <h3 className="text-2xl font-black text-gray-800 mb-2">Message Sent! ✨</h3>
-                  <p className="text-gray-600 font-medium">
+                  <h3 className="text-2xl font-black text-gray-800 mb-2">Ticket Created! ✨</h3>
+                  <p className="text-gray-600 font-medium mb-4">
                     We've received your message and will respond within 24 hours.
                   </p>
+                  {createdTicketId && (
+                    <Link
+                      to="/dashboard/tickets"
+                      className="inline-block text-blue-500 font-bold hover:text-blue-600 transition-colors"
+                    >
+                      Track your ticket in Dashboard →
+                    </Link>
+                  )}
+                  <div className="mt-6">
+                    <button
+                      onClick={() => { setFormSubmitted(false); setCreatedTicketId(null); }}
+                      className="text-sm text-gray-400 font-medium hover:text-gray-600 transition-colors"
+                    >
+                      Submit another request
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -311,14 +349,28 @@ export default function Support() {
                     />
                   </div>
 
+                  {submitError && (
+                    <div className="p-4 bg-red-50 border-2 border-red-100 rounded-xl text-red-600 text-sm font-medium">
+                      {submitError}
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
                     size="lg"
-                    className="w-full h-14 rounded-xl text-lg font-bold hover:scale-105 shadow-lg shadow-orange-500/20"
+                    disabled={submitting}
+                    className="w-full h-14 rounded-xl text-lg font-bold hover:scale-105 shadow-lg shadow-orange-500/20 disabled:opacity-60 disabled:hover:scale-100"
                   >
                     <Send className="w-5 h-5 mr-2" />
-                    Send Message
+                    {submitting ? 'Sending…' : user ? 'Create Support Ticket' : 'Send via Email'}
                   </Button>
+                  {!user && (
+                    <p className="text-center text-sm text-gray-400 font-medium">
+                      Opens your email app to reach support@oao.to — or{' '}
+                      <a href="/" className="text-blue-500 hover:text-blue-600 font-bold">log in</a>
+                      {' '}to create a trackable ticket.
+                    </p>
+                  )}
                 </form>
               )}
             </Card>

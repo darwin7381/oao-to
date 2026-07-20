@@ -2,7 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
+import './i18n';
 import { AuthProvider } from './contexts/AuthContext';
+import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import NewHome from './pages/NewHome';
 import Dashboard from './pages/dashboard/Dashboard';
 import Analytics from './pages/dashboard/Analytics';
@@ -19,7 +21,9 @@ import LinkPreview from './pages/LinkPreview';
 import ApiKeys from './pages/dashboard/ApiKeys';
 import Credits from './pages/dashboard/Credits';
 import ApiDocs from './pages/dashboard/ApiDocs';
+import Tickets from './pages/dashboard/Tickets';
 import ApiPage from './pages/ApiPage';
+import SubscriptionSuccess from './pages/dashboard/SubscriptionSuccess';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -37,6 +41,7 @@ import AdminLinks from './pages/Admin/Links';
 import AdminCustomLinks from './pages/Admin/CustomLinks';
 import AdminApiKeysMonitoring from './pages/Admin/ApiKeysMonitoring';
 import AdminAnalytics from './pages/Admin/Analytics';
+import AdminCouponManagement from './pages/Admin/CouponManagement';
 // 路由結構：
 // 公開路由：
 // / - 公開首頁（快速縮短）
@@ -85,6 +90,16 @@ function App() {
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/support" element={<Support />} />
         <Route path="/api" element={<ApiPage />} />
+        {/* Subscription Success (獨立頁面，無 Layout) */}
+        <Route
+          path="/dashboard/subscription-success"
+          element={
+            <ProtectedRoute>
+              <SubscriptionSuccess />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Protected Pages with Dashboard Layout */}
         <Route element={<DashboardLayout />}>
           <Route
@@ -130,7 +145,17 @@ function App() {
           <Route
             path="/dashboard/api-docs"
             element={
-              <ApiDocs />
+              <ProtectedRoute>
+                <ApiDocs />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/tickets"
+            element={
+              <ProtectedRoute>
+                <Tickets />
+              </ProtectedRoute>
             }
           />
         </Route>
@@ -249,6 +274,14 @@ function App() {
               </AdminRoute>
             }
           />
+          <Route
+            path="/admin/coupons"
+            element={
+              <AdminRoute>
+                <AdminCouponManagement />
+              </AdminRoute>
+            }
+          />
         </Route>
 
         {/* 404 Page */}
@@ -260,7 +293,9 @@ function App() {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <AuthProvider>
-    <App />
+    <SubscriptionProvider>
+      <App />
+    </SubscriptionProvider>
   </AuthProvider>,
 );
 

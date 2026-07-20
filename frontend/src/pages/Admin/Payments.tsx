@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Modal } from '../../components/ui/Modal';
 import { motion } from 'framer-motion';
 import {
     DollarSign,
@@ -21,9 +22,10 @@ export default function AdminPayments() {
     const { token } = useAuth();
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<'all' | 'completed' | 'pending' | 'failed' | 'refunded'>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
 
     useEffect(() => {
         loadPayments().catch((error) => {
@@ -53,19 +55,25 @@ export default function AdminPayments() {
     const displayPayments = payments;
 
     const getStatusBadge = (status: Payment['status']) => {
-        const config = {
+        const config: Record<string, { color: string; icon: typeof CheckCircle }> = {
             completed: { color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
+            succeeded: { color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
+            paid: { color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
             pending: { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock },
+            processing: { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock },
             failed: { color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
+            canceled: { color: 'bg-gray-100 text-gray-700 border-gray-200', icon: XCircle },
             refunded: { color: 'bg-gray-100 text-gray-700 border-gray-200', icon: RefreshCw },
         };
 
-        const { color, icon: Icon } = config[status];
+        // 未知狀態 fallback，避免解構 undefined 造成 crash
+        const { color, icon: Icon } = config[status] ?? config.pending;
+        const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
 
         return (
             <div className={cn('inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border', color)}>
                 <Icon className="w-3 h-3" />
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {label}
             </div>
         );
     };
@@ -79,6 +87,32 @@ export default function AdminPayments() {
     const totalRevenue = displayPayments
         .filter(p => p.status === 'completed')
         .reduce((sum, p) => sum + p.amount, 0);
+
+    const handleExportReport = () => {
+        const headers = ['ID', 'User Email', 'User ID', 'Plan', 'Amount', 'Currency', 'Credits', 'Status', 'Stripe Payment ID', 'Created'];
+        const rows = filteredPayments.map((p) => [
+            p.id,
+            p.user_email || '',
+            p.user_id || '',
+            p.plan || '',
+            String(p.amount ?? 0),
+            p.currency || '',
+            String(p.credits ?? 0),
+            p.status || '',
+            p.stripe_payment_id || '',
+            p.created_at ? new Date(p.created_at).toISOString() : '',
+        ]);
+        const csv = [headers, ...rows]
+            .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `payments-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 
     if (loading) {
         return (
@@ -99,7 +133,7 @@ export default function AdminPayments() {
                         Monitor transactions, process refunds, and manage billing
                     </p>
                 </div>
-                <Button colorScheme="blue">
+                <Button colorScheme="blue" onClick={handleExportReport} disabled={filteredPayments.length === 0}>
                     <Download className="w-4 h-4 mr-2" />
                     Export Report
                 </Button>
@@ -241,17 +275,17 @@ export default function AdminPayments() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <Badge variant="secondary" className="font-semibold bg-gray-100 text-gray-700 border-gray-200">
-                                                    {payment.plan}
+                                                    {payment.plan || '—'}
                                                 </Badge>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="font-black text-gray-900">
-                                                    ${payment.amount.toFixed(2)}
+                                                    ${(payment.amount ?? 0).toFixed(2)}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-sm font-bold text-blue-600">
-                                                    +{payment.credits.toLocaleString()}
+                                                    +{(payment.credits ?? 0).toLocaleString()}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
@@ -268,6 +302,7 @@ export default function AdminPayments() {
                                                     variant="ghost"
                                                     colorScheme="blue"
                                                     className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                    onClick={() => setSelectedPayment(payment)}
                                                 >
                                                     View Details
                                                 </Button>
@@ -280,9 +315,67 @@ export default function AdminPayments() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Payment Details Modal */}
+            <Modal
+                isOpen={!!selectedPayment}
+                onClose={() => setSelectedPayment(null)}
+                title="Payment Details"
+            >
+                {selectedPayment && (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <div>
+                                <div className="text-xs text-gray-500 font-semibold mb-0.5">Amount</div>
+                                <div className="text-2xl font-black text-gray-900">
+                                    ${(selectedPayment.amount ?? 0).toFixed(2)}
+                                    <span className="text-sm font-normal text-gray-500 ml-1 uppercase">{selectedPayment.currency}</span>
+                                </div>
+                            </div>
+                            {getStatusBadge(selectedPayment.status)}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <DetailRow label="User Email" value={selectedPayment.user_email} />
+                            <DetailRow label="User ID" value={selectedPayment.user_id} mono />
+                            <DetailRow label="Plan" value={selectedPayment.plan || '—'} />
+                            <DetailRow label="Credits" value={`+${(selectedPayment.credits ?? 0).toLocaleString()}`} />
+                            <DetailRow label="Payment Method" value={selectedPayment.payment_method || '—'} />
+                            <DetailRow
+                                label="Created"
+                                value={selectedPayment.created_at ? new Date(selectedPayment.created_at).toLocaleString() : '—'}
+                            />
+                        </div>
+
+                        <div className="p-4 bg-gray-50 rounded-xl space-y-3">
+                            <DetailRow label="Payment ID" value={selectedPayment.id} mono />
+                            <DetailRow label="Stripe Payment ID" value={selectedPayment.stripe_payment_id || '—'} mono />
+                            <DetailRow label="Stripe Customer ID" value={selectedPayment.stripe_customer_id || '—'} mono />
+                            {selectedPayment.completed_at != null && (
+                                <DetailRow label="Completed" value={new Date(selectedPayment.completed_at).toLocaleString()} />
+                            )}
+                        </div>
+
+                        <div className="pt-2">
+                            <Button variant="outline" className="w-full" onClick={() => setSelectedPayment(null)}>
+                                Close
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }
+
+const DetailRow = ({ label, value, mono }: { label: string; value?: string; mono?: boolean }) => (
+    <div>
+        <div className="text-xs text-gray-500 font-semibold mb-0.5">{label}</div>
+        <div className={cn('text-sm font-medium text-gray-900 break-all', mono && 'font-mono text-xs')}>
+            {value || '—'}
+        </div>
+    </div>
+);
 
 const StatsCard = ({ title, value, subtext, icon: Icon, color, delay }: any) => {
     const colorStyles = {

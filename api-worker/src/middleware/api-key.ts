@@ -111,12 +111,23 @@ export async function verifyApiKey(c: Context<{ Bindings: Env }>, next: Next) {
     }, 401);
   }
   
-  // 7. 檢查 Rate Limit
+  // 7. 檢查 Rate Limit —— 依「當前方案」動態決定上限（而非建 key 時定死的值），
+  //    並取「方案上限」與「key 設定值」的較小者，避免降級後仍用舊高上限
+  const PLAN_RATE_LIMITS: Record<string, { perMinute: number; perDay: number }> = {
+    free: { perMinute: 10, perDay: 1000 },
+    starter: { perMinute: 60, perDay: 10000 },
+    pro: { perMinute: 300, perDay: 100000 },
+    enterprise: { perMinute: 1000, perDay: 999999 },
+  };
+  const planLimit = PLAN_RATE_LIMITS[(result.plan_type as string) || 'free'] || PLAN_RATE_LIMITS.free;
+  const effPerMinute = Math.min((result.rate_limit_per_minute as number) || planLimit.perMinute, planLimit.perMinute);
+  const effPerDay = Math.min((result.rate_limit_per_day as number) || planLimit.perDay, planLimit.perDay);
+
   const rateLimitCheck = await checkApiKeyRateLimit(
     c.env,
     result.id as string,
-    result.rate_limit_per_minute as number,
-    result.rate_limit_per_day as number
+    effPerMinute,
+    effPerDay
   );
   
   // 設置 Rate Limit headers

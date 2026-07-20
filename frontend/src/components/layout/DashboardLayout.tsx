@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation, Link, Navigate } from 'react-router-dom';
 import {
     LayoutDashboard,
     Key,
     CreditCard,
     BookOpen,
     Settings,
+    LifeBuoy,
     Menu,
     X,
     ChevronRight
@@ -14,6 +15,7 @@ import { cn } from '../../lib/utils';
 import UserMenu from '../UserMenu';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface NavCreditInfo {
     balance: {
@@ -27,36 +29,46 @@ interface NavCreditInfo {
     };
 }
 
+// label 是 i18n key（render 時經 t() 轉），不是顯示字串
 const NAV_ITEMS = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/dashboard/api-keys', label: 'API Keys', icon: Key },
-    { path: '/dashboard/credits', label: 'Credits & Usage', icon: CreditCard },
-    { path: '/dashboard/api-docs', label: 'API Documentation', icon: BookOpen },
-    { path: '/dashboard/settings', label: 'Settings', icon: Settings },
+    { path: '/dashboard', label: 'sidebar.overview', icon: LayoutDashboard },
+    { path: '/dashboard/api-keys', label: 'sidebar.apiKeys', icon: Key },
+    { path: '/dashboard/credits', label: 'sidebar.credits', icon: CreditCard },
+    { path: '/dashboard/api-docs', label: 'sidebar.apiDocs', icon: BookOpen },
+    { path: '/dashboard/tickets', label: 'sidebar.support', icon: LifeBuoy },
+    { path: '/dashboard/settings', label: 'sidebar.settings', icon: Settings },
 ];
 
 export default function DashboardLayout() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [creditInfo, setCreditInfo] = useState<NavCreditInfo | null>(null);
-    const { token } = useAuth();
+    const { token, loading, user } = useAuth();
+    const { t } = useTranslation();
     const location = useLocation();
 
     useEffect(() => {
-        const fetchCredits = async () => {
+        let cancelled = false;
+        
+        const fetchCredits = async (retryCount = 0) => {
             if (!token) return;
             
             try {
                 const { api } = await import('../../lib/api');
                 const data = await api.getCredits();
-                setCreditInfo(data.data);
+                if (!cancelled && data?.data) {
+                    setCreditInfo(data.data);
+                }
             } catch (err) {
-                // 靜默失敗，不影響導航欄顯示
+                // 首次失敗時重試一次（延遲 1 秒）
+                if (retryCount < 1 && !cancelled) {
+                    setTimeout(() => fetchCredits(retryCount + 1), 1000);
+                }
             }
         };
 
-        fetchCredits().catch(() => {
-            // 靜默處理錯誤
-        });
+        fetchCredits().catch(() => {});
+        
+        return () => { cancelled = true; };
     }, [token, location.pathname]);
 
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -65,6 +77,20 @@ export default function DashboardLayout() {
     useEffect(() => {
         setIsMobileMenuOpen(false);
     }, [location.pathname]);
+
+    // 權限守衛：認證中先顯示 spinner，避免 dashboard 框架在守衛解析前閃現（FOUC）
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-[#FDFBF7]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+            </div>
+        );
+    }
+
+    // 已載入完成但未登入 → 導回首頁
+    if (!user) {
+        return <Navigate to="/" replace />;
+    }
 
     return (
         <div className="min-h-screen bg-[#FDFBF7] font-nunito flex">
@@ -114,7 +140,7 @@ export default function DashboardLayout() {
                             <Link
                                 key={item.path}
                                 to={item.path}
-                                title={isCollapsed ? item.label : undefined}
+                                title={isCollapsed ? t(item.label) : undefined}
                                 className={cn(
                                     "flex items-center gap-3 px-3 py-3 rounded-2xl transition-all duration-200 group relative overflow-hidden",
                                     isActive
@@ -133,7 +159,7 @@ export default function DashboardLayout() {
                                 )}
                                 <Icon className={cn("w-5 h-5 relative z-10 flex-shrink-0", isActive ? "text-orange-500" : "text-gray-400 group-hover:text-gray-600")} />
                                 {!isCollapsed && (
-                                    <span className="relative z-10 whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>
+                                    <span className="relative z-10 whitespace-nowrap overflow-hidden text-ellipsis">{t(item.label)}</span>
                                 )}
                                 {isActive && !isCollapsed && <ChevronRight className="w-4 h-4 ml-auto text-orange-400 relative z-10" />}
                             </Link>
@@ -250,7 +276,7 @@ export default function DashboardLayout() {
                                             )}
                                         >
                                             <Icon className={cn("w-5 h-5", isActive ? "text-orange-500" : "text-gray-400")} />
-                                            {item.label}
+                                            {t(item.label)}
                                         </Link>
                                     );
                                 })}

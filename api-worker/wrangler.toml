@@ -39,9 +39,23 @@ database_id = "db9693c9-d2de-43b7-ad28-e2211e736e16"
 binding = "TRACKER"
 dataset = "link_clicks"
 
+# Durable Objects - 原子 Rate Limiter
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiterDO"
+
+# DO migration（top-level，各環境共用）— 帳號要求 SQLite-backed DO
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RateLimiterDO"]
+
 # ===== 生產環境 =====
 [env.production]
 routes = [{ pattern = "api.oao.to", custom_domain = true }]
+
+[[env.production.durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiterDO"
 
 [[env.production.kv_namespaces]]
 binding = "LINKS"
@@ -56,3 +70,18 @@ migrations_dir = "migrations"
 [[env.production.analytics_engine_datasets]]
 binding = "TRACKER"
 dataset = "link_clicks"
+
+# Email（SES）非機密設定 — 機密（SES_ACCESS_KEY_ID / SES_SECRET_ACCESS_KEY）走 wrangler secret
+[env.production.vars]
+SES_REGION = "us-east-1"
+SES_FROM = "OAO <billing@oao.to>"
+DUNNING_EMAIL_ENABLED = "true"
+EMAIL_LIFECYCLE_ENABLED = "true"
+SES_CONFIG_SET = "oao-events"
+
+# Cron Triggers - 定期任務
+[triggers]
+crons = ["0 * * * *"]  # 每小時執行一次
+
+[env.production.triggers]
+crons = ["0 * * * *"]  # 每小時執行一次

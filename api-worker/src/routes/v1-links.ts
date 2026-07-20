@@ -76,6 +76,10 @@ router.post('/', requireScope('links:write'), async (c) => {
       slug = await generateUniqueSlug(c.env);
     }
     
+    // 密碼雜湊儲存（不存明文）
+    const { hashPassword } = await import('../utils/password');
+    const hashedPassword = password ? await hashPassword(password) : undefined;
+
     // 創建鏈接數據
     const linkData: LinkData = {
       slug,
@@ -86,7 +90,7 @@ router.post('/', requireScope('links:write'), async (c) => {
       description,
       image,
       expiresAt,
-      password,
+      password: hashedPassword,
       tags,
       isActive: true,
     };
@@ -94,11 +98,18 @@ router.post('/', requireScope('links:write'), async (c) => {
     // 存入 KV
     await c.env.LINKS.put(`link:${slug}`, JSON.stringify(linkData));
     
-    // 存入 D1 索引
+    // 存入 D1 索引（link_index 保留給既有 v1 讀取相容）
     await c.env.DB.prepare(`
       INSERT INTO link_index (slug, user_id, created_via, api_key_id, created_at)
       VALUES (?, ?, 'api', ?, ?)
     `).bind(slug, userId, apiKeyId, Date.now()).run();
+
+    // 同步寫入 links（source of truth）— 修掉「API 建的連結在使用者統計/管理端統計全漏算」
+    await c.env.DB.prepare(`
+      INSERT OR IGNORE INTO links (slug, url, user_id, title, source, is_custom, api_key_id, created_at)
+      VALUES (?, ?, ?, ?, 'api', ?, ?, ?)
+    `).bind(slug, linkData.url, userId, linkData.title || linkData.url,
+            customSlug ? 1 : 0, apiKeyId, Date.now()).run();
     
     const baseUrl = c.req.header('host')?.includes('localhost')
       ? `http://${c.req.header('host')}`

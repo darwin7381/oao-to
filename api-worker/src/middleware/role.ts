@@ -7,13 +7,15 @@ import type { Env, UserRole, JWTPayload } from '../types';
 export function requireRole(...allowedRoles: UserRole[]) {
   return async (c: Context<{ Bindings: Env }>, next: Next) => {
     const jwtPayload = c.get('jwtPayload') as JWTPayload;
-    
+
     if (!jwtPayload) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
 
-    const userRole = jwtPayload.role;
-    
+    // 一律用 requireAuth 針對 DB 重驗過的 userRole（effectiveRole），
+    // 不用 JWT 內的 role — 否則被降權的 admin 在 token 有效期內（7 天）仍可過關
+    const userRole = (c.get('userRole') as UserRole) || jwtPayload.role;
+
     if (!allowedRoles.includes(userRole)) {
       return c.json({ 
         error: 'Forbidden',

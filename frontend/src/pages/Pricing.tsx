@@ -1,13 +1,16 @@
 import { motion } from 'framer-motion';
-import { Check, Zap, Crown, Rocket, HelpCircle, TrendingUp } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Check, Zap, Crown, Rocket, HelpCircle, TrendingUp, AlertCircle } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import { useState, useEffect } from 'react';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { api } from '../lib/api';
+import { cn } from '../lib/utils';
+import { useSubscriptionStatus } from '../hooks/useSubscriptionStatus';
 
 interface Plan {
   id: string;
@@ -22,14 +25,41 @@ interface Plan {
 
 export default function Pricing() {
   const { user, login } = useAuth();
+  const { subscription, refreshSubscription } = useSubscription();
+  const { subscription: subStatus, error: subStatusError, refetch: refetchSubStatus } = useSubscriptionStatus();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [creditAmount, setCreditAmount] = useState(1000);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [promoCode, setPromoCode] = useState('');
-  const [promoValidation, setPromoValidation] = useState<any>(null);
-  const [userPlan, setUserPlan] = useState<string>('free');
+  
+  // 從 SubscriptionContext 取得當前方案
+  const userPlan = subscription?.planType || 'free';
+
+  // 訂閱狀態載入失敗且沒有任何資料：無法判斷用戶方案，不能當成 Free user
+  const subStatusUnknown = !!user && !subStatus && !!subStatusError;
+  
+  // 偵測從 Portal 返回，強制刷新訂閱狀態
+  useEffect(() => {
+    const isPortalReturn = searchParams.has('portal_return') || 
+                          document.referrer.includes('billing.stripe.com');
+    
+    if (isPortalReturn && user) {
+      console.log('[Pricing] Portal return detected, refreshing subscription status...');
+      // 清除 URL 參數
+      if (searchParams.has('portal_return')) {
+        searchParams.delete('portal_return');
+        setSearchParams(searchParams, { replace: true });
+      }
+      // 延遲 refresh（給 webhook 一點時間處理）
+      const timer = setTimeout(() => {
+        refreshSubscription();
+        refetchSubStatus();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
 
   // 定义图标和颜色映射（必须在使用前定义）
   const planIcons: Record<string, any> = {
@@ -64,36 +94,37 @@ export default function Pricing() {
     loadPlans();
   }, []);
 
-  // 獲取用戶當前方案
-  useEffect(() => {
-    const loadUserPlan = async () => {
-      if (!user) {
-        setUserPlan('free');
-        return;
-      }
-      
-      try {
-        const credits = await api.getCredits();
-        setUserPlan(credits.planType || 'free');
-      } catch (error) {
-        console.error('Failed to load user plan:', error);
-        setUserPlan('free');
-      }
-    };
-    loadUserPlan();
-  }, [user]);
 
-  // 判斷按鈕文字和行為
+  // 判斷按鈕文字和行為（考慮 billing period）
   const getPlanAction = (planType: string) => {
     if (!user) {
       return { text: 'Get Started', action: 'login', variant: 'default' as const };
     }
 
+    // 訂閱狀態未知時，不能假設用戶是 Free user 顯示 Upgrade
+    if (subStatusUnknown) {
+      return { text: 'Unavailable', action: 'unknown', variant: 'secondary' as const };
+    }
+
     const planOrder = { free: 0, starter: 1, pro: 2, enterprise: 3 };
     const currentOrder = planOrder[userPlan as keyof typeof planOrder] || 0;
     const targetOrder = planOrder[planType as keyof typeof planOrder] || 0;
+    
+    // 獲取當前的 billing period
+    const currentBillingPeriod = subStatus?.current?.billingPeriod || 'monthly';
 
+    // 如果是相同方案
     if (targetOrder === currentOrder) {
+      // 檢查是否為不同的 billing period
+      if (currentBillingPeriod !== billingPeriod) {
+        const switchTo = billingPeriod === 'yearly' ? 'Yearly' : 'Monthly';
+        return { 
+          text: `Switch to ${switchTo}`, 
+          action: 'switch_period', 
+          variant: 'outline' as const 
+        };
+      }
+      // 相同方案、相同週期
       return { text: 'Current Plan', action: 'current', variant: 'secondary' as const };
     } else if (targetOrder > currentOrder) {
       return { text: 'Upgrade', action: 'upgrade', variant: 'default' as const };
@@ -111,14 +142,25 @@ export default function Pricing() {
       return;
     }
 
-    if (action.action === 'current') {
-      // 當前方案，不做任何事（或跳轉到 Dashboard）
+    if (action.action === 'current' || action.action === 'unknown') {
+      // 當前方案或訂閱狀態未知，不做任何事
       return;
     }
 
-    if (planType === 'free') {
-      // Free plan 不需要付款
-      alert('請前往 Dashboard 取消訂閱以降級到 Free plan');
+    if (action.action === 'downgrade' || action.action === 'switch_period') {
+      // 降級或切換週期：打開 Customer Portal
+      try {
+        setCheckoutLoading(true);
+        const response = await api.createPortalSession();
+        if (response.success && response.portalUrl) {
+          window.location.href = response.portalUrl;
+        }
+      } catch (error) {
+        console.error('Portal error:', error);
+        alert(error instanceof Error ? error.message : 'Failed to open subscription management');
+      } finally {
+        setCheckoutLoading(false);
+      }
       return;
     }
 
@@ -128,7 +170,6 @@ export default function Pricing() {
       const response = await api.createCheckoutSession({
         planType,
         billingPeriod,
-        promoCode: promoCode || undefined,
       });
 
       if (response.success && response.sessionUrl) {
@@ -290,6 +331,14 @@ export default function Pricing() {
             </div>
           </motion.div>
 
+          {/* 訂閱狀態載入失敗提示 */}
+          {subStatusUnknown && (
+            <div className="max-w-6xl mx-auto mb-8 flex items-center justify-center gap-2 px-4 py-3 bg-amber-50 border-2 border-amber-200 text-amber-700 rounded-xl text-sm font-bold">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              Unable to load your subscription status. Please refresh the page.
+            </div>
+          )}
+
           {/* Main Pricing Cards (3 plans) */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -315,9 +364,16 @@ export default function Pricing() {
                     ${plan.popular ? 'shadow-2xl ' + plan.shadowColor : 'shadow-xl hover:shadow-2xl shadow-gray-100'}
                   `}
                 >
-                  {plan.popular && (
+                  {plan.popular && !subStatus?.scheduledChange && (
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-gradient-to-r from-orange-400 to-pink-400 text-white text-xs font-black rounded-full shadow-lg">
                       ⭐ MOST POPULAR
+                    </div>
+                  )}
+                  
+                  {/* 如果這是即將切換到的方案 */}
+                  {subStatus?.scheduledChange?.newPlan === plan.planType && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-black rounded-full shadow-lg">
+                      📅 SCHEDULED
                     </div>
                   )}
 
@@ -345,11 +401,29 @@ export default function Pricing() {
                     className={`w-full h-12 rounded-xl font-bold mb-6 ${plan.popular ? 'shadow-lg ' + plan.shadowColor : ''
                       }`}
                     onClick={() => handlePlanAction(plan.planType)}
-                    disabled={checkoutLoading || plan.isCurrent}
+                    disabled={checkoutLoading || plan.isCurrent || subStatusUnknown}
                     type="button"
                   >
                     {checkoutLoading ? 'Loading...' : plan.cta}
                   </Button>
+                  
+                  {/* Scheduled Change 提示 - 只在當前方案卡片顯示 */}
+                  {plan.isCurrent && subStatus?.scheduledChange && (
+                    <div className={cn(
+                      "mb-4 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2",
+                      subStatus.scheduledChange.type === 'cancel'
+                        ? "bg-red-50 text-red-700 border border-red-200"
+                        : "bg-orange-50 text-orange-700 border border-orange-200"
+                    )}>
+                      <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                      <span>
+                        {subStatus.scheduledChange.type === 'cancel' 
+                          ? `Ending ${subStatus.scheduledChange.effectiveDateFormatted.split(',')[0]}`
+                          : `→ ${subStatus.scheduledChange.newPlanDisplayName} on ${subStatus.scheduledChange.effectiveDateFormatted.split(',')[0]}`
+                        }
+                      </span>
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     {plan.features.map((feature) => (
@@ -388,11 +462,23 @@ export default function Pricing() {
                   </div>
                   <div className="text-center md:text-right flex-shrink-0">
                     <div className="text-5xl font-black text-gray-900 mb-4">
-                      {enterprisePlan.price_monthly >= 1000 ? 'Custom' : `$${enterprisePlan.price_monthly}`}
+                      {enterprisePlan.price_monthly >= 1000 ? 'Custom' : `$${billingPeriod === 'yearly' ? enterprisePlan.price_yearly : enterprisePlan.price_monthly}`}
                     </div>
-                    <Button size="lg" className="font-bold px-8">
-                      Contact Sales
-                    </Button>
+                    <div className="flex flex-col gap-3">
+                      {enterprisePlan.price_monthly < 1000 && (
+                        <Button 
+                          size="lg" 
+                          className="font-bold px-8"
+                          onClick={() => handlePlanAction('enterprise')}
+                          disabled={checkoutLoading || subStatusUnknown}
+                        >
+                          {checkoutLoading ? 'Loading...' : getPlanAction('enterprise').text}
+                        </Button>
+                      )}
+                      <Button size="lg" variant="outline" className="font-bold px-8">
+                        Contact Sales
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -452,11 +538,31 @@ export default function Pricing() {
                   <div className="text-sm text-gray-600 mb-4">
                     <strong className="text-orange-600">$0.01</strong> per credit • Instant delivery • Never expires
                   </div>
-                  <Link to="/dashboard/credits">
-                    <Button size="lg" className="w-full max-w-md">
-                      Buy {creditAmount.toLocaleString()} Credits for ${(creditAmount / 100).toFixed(0)}
-                    </Button>
-                  </Link>
+                  <Button 
+                    size="lg" 
+                    className="w-full max-w-md"
+                    disabled={checkoutLoading}
+                    onClick={async () => {
+                      if (!user) {
+                        login();
+                        return;
+                      }
+                      try {
+                        setCheckoutLoading(true);
+                        const response = await api.createCreditsCheckout(creditAmount);
+                        if (response.success && response.sessionUrl) {
+                          window.location.href = response.sessionUrl;
+                        }
+                      } catch (error) {
+                        console.error('Credits checkout error:', error);
+                        alert(error instanceof Error ? error.message : 'Failed to create checkout');
+                      } finally {
+                        setCheckoutLoading(false);
+                      }
+                    }}
+                  >
+                    {checkoutLoading ? 'Loading...' : `Buy ${creditAmount.toLocaleString()} Credits for $${(creditAmount / 100).toFixed(0)}`}
+                  </Button>
                 </div>
               </Card>
             </div>
@@ -484,7 +590,7 @@ export default function Pricing() {
                   <h3 className="font-black text-gray-800 text-lg">Can I change plans later?</h3>
                 </div>
                 <p className="text-gray-600 font-medium text-sm ml-11">
-                  Absolutely! Upgrade or downgrade anytime. Changes take effect immediately, and we'll prorate any payments.
+                  Absolutely! Upgrade anytime — takes effect immediately with prorated billing. Downgrade or cancel anytime; your current plan stays active until the end of your billing period.
                 </p>
               </Card>
 

@@ -633,7 +633,7 @@ export default function Analytics() {
             <motion.div variants={itemVariants} className="lg:col-span-2">
               <Card className="p-8 h-full bg-white/60 backdrop-blur-xl border-white/60 shadow-xl rounded-[2.5rem] relative min-h-[400px] flex flex-col">
                 <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-2xl font-black text-gray-800">Traffic Trend</h3>
+                  <h3 className="text-2xl font-black text-gray-800">Traffic Trend <span className="text-sm font-bold text-gray-400">(last 30 days)</span></h3>
                   <div className="flex gap-2 bg-white/50 px-3 py-1.5 rounded-full border border-white/50">
                     <div className="w-3 h-3 rounded-full bg-green-400 mt-1" />
                     <span className="text-xs text-gray-500 font-bold">Daily Clicks</span>

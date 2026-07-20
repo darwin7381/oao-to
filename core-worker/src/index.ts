@@ -3,6 +3,11 @@
 
 import { Hono } from 'hono';
 
+async function hashPassword(pw: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 interface Env {
   LINKS: KVNamespace;
   TRACKER: AnalyticsEngineDataset;
@@ -17,6 +22,8 @@ interface LinkData {
   createdAt: number;
   expiresAt?: number;
   password?: string;
+  isActive?: boolean;
+  flagReason?: string;
 }
 
 const app = new Hono<{ Bindings: Env }>({ strict: false });
@@ -71,6 +78,34 @@ app.get('/:slug', async (c) => {
 
     const linkData: LinkData = JSON.parse(linkDataStr);
 
+    // 檢查是否被停用
+    if (linkData.isActive === false) {
+      return c.html(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>410 - 短網址已停用</title></head>
+        <body style="font-family: system-ui; text-align: center; padding: 50px;">
+          <h1>🚫 短網址已停用</h1>
+          <p>這個短網址已被停用</p>
+        </body>
+        </html>
+      `, 410);
+    }
+
+    // 檢查是否被標記封鎖
+    if (linkData.flagReason) {
+      return c.html(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>410 - 短網址已封鎖</title></head>
+        <body style="font-family: system-ui; text-align: center; padding: 50px;">
+          <h1>⛔ 短網址已被封鎖</h1>
+          <p>這個短網址因違規已被封鎖</p>
+        </body>
+        </html>
+      `, 410);
+    }
+
     // 檢查是否過期
     if (linkData.expiresAt && Date.now() > linkData.expiresAt) {
       return c.html(`
@@ -87,8 +122,11 @@ app.get('/:slug', async (c) => {
 
     // 檢查密碼保護
     if (linkData.password) {
-      const password = c.req.query('p');
-      if (password !== linkData.password) {
+      const input = c.req.query('p') ?? '';
+      const authorized =
+        input === linkData.password ||
+        (await hashPassword(input)) === linkData.password;
+      if (!authorized) {
         return c.html(`
           <!DOCTYPE html>
           <html>
@@ -111,7 +149,15 @@ app.get('/:slug', async (c) => {
     }
 
     // 重定向到目標網址
-    return c.redirect(linkData.url, 301);
+    // 使用 302（暫時重定向）+ 短快取，避免瀏覽器永久快取而導致
+    // 停用／過期／刪除的短網址仍從快取轉址
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: linkData.url,
+        'Cache-Control': 'public, max-age=60',
+      },
+    });
   } catch (error) {
     console.error('Redirect error:', error);
     return c.text('Internal server error', 500);

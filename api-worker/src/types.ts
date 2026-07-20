@@ -4,6 +4,7 @@ export interface Env {
   LINKS: KVNamespace;
   DB: D1Database;
   TRACKER: AnalyticsEngineDataset;
+  RATE_LIMITER: DurableObjectNamespace;
   CLOUDFLARE_ACCOUNT_ID: string;
   CLOUDFLARE_API_TOKEN: string;
   JWT_SECRET: string;
@@ -21,6 +22,17 @@ export interface Env {
   STRIPE_WEBHOOK_SECRET?: string;  // 生產環境 Webhook Secret
   STRIPE_WEBHOOK_SECRET_TEST?: string;  // 測試環境 Webhook Secret
   ENVIRONMENT?: string;  // 'production' | 'development'
+
+  // Email（Amazon SES v2，用於 dunning 催繳信）
+  SES_ACCESS_KEY_ID?: string;      // secret：oao-dunning-ses IAM key
+  SES_SECRET_ACCESS_KEY?: string;  // secret
+  SES_REGION?: string;             // var，預設 us-east-1
+  SES_FROM?: string;               // var，寄件人，如 "OAO <billing@oao.to>"
+  DUNNING_EMAIL_ENABLED?: string;  // var，'true' 才實際寄信（未設 = 不寄，安全預設）
+  EMAIL_LIFECYCLE_ENABLED?: string; // var，'true' 才寄生命週期信（收據/歡迎/退款/取消），獨立於 dunning
+  SES_CONFIG_SET?: string;         // var，SES configuration set 名稱（接 SNS bounce/complaint 事件）
+  SES_EVENTS_TOKEN?: string;       // secret，/api/webhook/ses-events?token= 的共享密鑰
+  INBOUND_TICKET_TOKEN?: string;   // secret，mailhandler 建工單 /api/support/inbound 的共享密鑰
 }
 
 export interface LinkData {
@@ -112,9 +124,6 @@ export interface Credits {
   monthlyQuota: number;
   monthlyUsed: number;
   monthlyResetAt?: number;
-  overageLimit: number;
-  overageUsed: number;
-  overageRate: number;
   createdAt: number;
   updatedAt?: number;
 }
@@ -196,7 +205,15 @@ export interface CreditDeduction {
 // Stripe 相關類型
 // ==========================================
 
-export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'unpaid' | 'trialing';
+export type SubscriptionStatus =
+  | 'active'
+  | 'past_due'
+  | 'canceled'
+  | 'unpaid'
+  | 'trialing'
+  | 'incomplete'
+  | 'incomplete_expired'
+  | 'paused';
 export type BillingPeriod = 'monthly' | 'yearly';
 
 export interface StripeEvent {

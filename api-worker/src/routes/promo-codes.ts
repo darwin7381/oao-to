@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import type { Env, PromoCode, DiscountType } from '../types';
 import { requireAuth } from '../middleware/auth';
+import { requireAdmin } from '../middleware/role';
+import { getStripe } from '../utils/stripe';
 
 const router = new Hono<{ Bindings: Env }>();
 
@@ -117,7 +119,7 @@ router.post('/validate', requireAuth, async (c) => {
  * POST /api/promo-codes (Admin only)
  * 建立新的優惠碼
  */
-router.post('/', requireAuth, async (c) => {
+router.post('/', requireAuth, requireAdmin(), async (c) => {
   try {
     const userId = c.get('userId') as string;
     const userRole = c.get('userRole') as string;
@@ -137,6 +139,8 @@ router.post('/', requireAuth, async (c) => {
       perUserLimit,
       validFrom,
       validUntil,
+      duration,
+      durationMonths,
     } = await c.req.json<{
       code: string;
       discountType: DiscountType;
@@ -148,11 +152,22 @@ router.post('/', requireAuth, async (c) => {
       perUserLimit?: number;
       validFrom?: number;
       validUntil?: number;
+      duration?: 'once' | 'repeating' | 'forever';
+      durationMonths?: number;
     }>();
-    
+
     // 驗證必填欄位
     if (!code || !discountType || discountValue === undefined) {
       return c.json({ error: 'Missing required fields' }, 400);
+    }
+
+    // 驗證 duration 設定
+    const couponDuration = duration || 'once';
+    if (!['once', 'repeating', 'forever'].includes(couponDuration)) {
+      return c.json({ error: 'Invalid duration' }, 400);
+    }
+    if (couponDuration === 'repeating' && (!durationMonths || durationMonths < 1 || durationMonths > 36)) {
+      return c.json({ error: 'durationMonths (1-36) is required for repeating duration' }, 400);
     }
     
     // 驗證 code 格式
@@ -173,14 +188,54 @@ router.post('/', requireAuth, async (c) => {
     
     // 建立優惠碼
     const promoId = `promo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
+    // 若是百分比或固定金額折扣，在 Stripe 預建立 Coupon，讓 checkout 直接複用
+    let stripeCouponId: string | null = null;
+    if (discountType === 'percentage' || discountType === 'fixed_amount') {
+      try {
+        const stripe = getStripe(c.env);
+        const couponParams: Record<string, unknown> = {
+          id: `oao_${promoId}`,
+          name: `OAO.TO: ${code}`,
+          duration: couponDuration,
+        };
+
+        if (couponDuration === 'repeating') {
+          couponParams.duration_in_months = durationMonths;
+        }
+
+        if (discountType === 'percentage') {
+          couponParams.percent_off = discountValue;
+        } else {
+          couponParams.amount_off = discountValue;
+          couponParams.currency = 'usd';
+        }
+
+        if (maxUses) {
+          couponParams.max_redemptions = maxUses;
+        }
+
+        if (validUntil) {
+          couponParams.redeem_by = Math.floor(validUntil / 1000);
+        }
+
+        const coupon = await stripe.coupons.create(couponParams);
+        stripeCouponId = coupon.id;
+        console.log(`✅ Stripe coupon created: ${stripeCouponId}`);
+      } catch (stripeErr) {
+        // Stripe coupon 建立失敗不阻擋 promo code 建立，checkout 會 fallback 建立一次性 coupon
+        console.error('Failed to create Stripe coupon for promo code:', stripeErr);
+      }
+    }
+
     await c.env.DB.prepare(`
       INSERT INTO promo_codes (
         id, code, discount_type, discount_value,
         applies_to_plans, applies_to_periods,
         bonus_credits, max_uses, per_user_limit,
-        valid_from, valid_until, created_at, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        valid_from, valid_until, stripe_coupon_id,
+        duration, duration_months, created_at, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       promoId,
       code,
@@ -193,10 +248,13 @@ router.post('/', requireAuth, async (c) => {
       perUserLimit || 1,
       validFrom || null,
       validUntil || null,
+      stripeCouponId,
+      couponDuration,
+      couponDuration === 'repeating' ? durationMonths : null,
       Date.now(),
       userId
     ).run();
-    
+
     return c.json({
       success: true,
       promoCode: {
@@ -205,6 +263,9 @@ router.post('/', requireAuth, async (c) => {
         discountType,
         discountValue,
         bonusCredits: bonusCredits || 0,
+        stripeCouponId,
+        duration: couponDuration,
+        durationMonths: couponDuration === 'repeating' ? durationMonths : null,
       },
     }, 201);
     
@@ -220,7 +281,7 @@ router.post('/', requireAuth, async (c) => {
  * GET /api/promo-codes (Admin only)
  * 列出所有優惠碼
  */
-router.get('/', requireAuth, async (c) => {
+router.get('/', requireAuth, requireAdmin(), async (c) => {
   try {
     const userRole = c.get('userRole') as string;
     
@@ -253,7 +314,7 @@ router.get('/', requireAuth, async (c) => {
  * PATCH /api/promo-codes/:id (Admin only)
  * 更新優惠碼（通常是啟用/停用）
  */
-router.patch('/:id', requireAuth, async (c) => {
+router.patch('/:id', requireAuth, requireAdmin(), async (c) => {
   try {
     const userRole = c.get('userRole') as string;
     
@@ -284,7 +345,7 @@ router.patch('/:id', requireAuth, async (c) => {
  * GET /api/promo-codes/:code/stats (Admin only)
  * 查看優惠碼使用統計
  */
-router.get('/:code/stats', requireAuth, async (c) => {
+router.get('/:code/stats', requireAuth, requireAdmin(), async (c) => {
   try {
     const userRole = c.get('userRole') as string;
     

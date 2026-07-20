@@ -4,8 +4,32 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { requireAuth } from '../middleware/auth';
 import { getCreditBalance } from '../utils/credit-manager';
+import { normalizeLocale, SUPPORTED_EMAIL_LOCALES } from '../utils/email-i18n';
 
 const router = new Hono<{ Bindings: Env }>();
+
+/**
+ * 語言偏好（前端 i18n 與 email 共用）
+ * GET /api/account/locale → { locale: 'zh-TW' | ... | null }
+ * PUT /api/account/locale { locale } — 白名單驗證後存 users.locale
+ */
+router.get('/locale', requireAuth, async (c) => {
+  const row = await c.env.DB.prepare(`SELECT locale FROM users WHERE id = ?`)
+    .bind(c.get('userId')).first();
+  return c.json({ locale: (row?.locale as string) || null });
+});
+
+router.put('/locale', requireAuth, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const requested = typeof body.locale === 'string' ? body.locale : '';
+  const locale = normalizeLocale(requested);
+  if (!SUPPORTED_EMAIL_LOCALES.includes(locale)) {
+    return c.json({ error: 'Unsupported locale' }, 400);
+  }
+  await c.env.DB.prepare(`UPDATE users SET locale = ? WHERE id = ?`)
+    .bind(locale, c.get('userId')).run();
+  return c.json({ locale });
+});
 
 /**
  * 獲取 Credit 餘額和方案資訊
@@ -20,26 +44,24 @@ router.get('/credits', requireAuth, async (c) => {
       c.purchased_balance,
       c.total_purchased,
       c.total_used,
-      c.plan_type,
+      COALESCE(c.plan_override, c.plan_type) as plan_type,
       c.plan_renewed_at,
       c.monthly_used,
       c.monthly_reset_at,
-      c.overage_limit,
-      c.overage_used,
-      c.overage_rate,
       COALESCE(p.monthly_credits, 100) as monthly_quota
     FROM credits c
-    LEFT JOIN plans p ON c.plan_type = p.name
+    LEFT JOIN plans p ON COALESCE(c.plan_override, c.plan_type) = p.name
     WHERE c.user_id = ?
   `).bind(userId).first();
-  
+
   if (!result) {
     return c.json({ error: 'Credits account not found' }, 404);
   }
-  
+
   const monthlyRemaining = (result.monthly_quota as number) - (result.monthly_used as number);
-  const overageRemaining = (result.overage_limit as number) - (result.overage_used as number);
-  
+
+  // 註：overage（超額計費）已移除 — 從無設定入口、無 Stripe 計量計費對應，
+  // 扣款層已改為 月配額 → 永久 credits 兩段式
   return c.json({
     success: true,
     data: {
@@ -54,12 +76,6 @@ router.get('/credits', requireAuth, async (c) => {
         monthlyUsed: result.monthly_used,
         monthlyRemaining: Math.max(0, monthlyRemaining),
         monthlyResetAt: result.monthly_reset_at,
-      },
-      overage: {
-        limit: result.overage_limit,
-        used: result.overage_used,
-        remaining: Math.max(0, overageRemaining),
-        rate: result.overage_rate,
       },
       statistics: {
         totalPurchased: result.total_purchased,
@@ -88,6 +104,7 @@ router.get('/transactions', requireAuth, async (c) => {
       resource_id,
       description,
       api_key_id,
+      metadata,
       created_at
     FROM credit_transactions
     WHERE user_id = ?
@@ -113,6 +130,7 @@ router.get('/transactions', requireAuth, async (c) => {
         resourceId: tx.resource_id,
         description: tx.description,
         apiKeyId: tx.api_key_id,
+        metadata: tx.metadata,
         createdAt: tx.created_at,
       })),
       pagination: {

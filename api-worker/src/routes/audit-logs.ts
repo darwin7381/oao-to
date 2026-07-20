@@ -32,6 +32,17 @@ auditLogs.get('/', requireAdmin(), async (c) => {
       query += ' AND resource_type = ?';
       bindings.push(resourceType);
     }
+    const dateFrom = Date.parse(c.req.query('date_from') || '');
+    if (Number.isFinite(dateFrom)) {
+      query += ' AND created_at >= ?';
+      bindings.push(dateFrom);
+    }
+    const dateTo = Date.parse(c.req.query('date_to') || '');
+    if (Number.isFinite(dateTo)) {
+      // date_to 含當日整天
+      query += ' AND created_at < ?';
+      bindings.push(dateTo + 86_400_000);
+    }
 
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     bindings.push(limit, offset);
